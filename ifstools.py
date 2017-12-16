@@ -84,5 +84,5 @@ if __name__ == '__main__':
     if len(sys.argv) < 2:
         print('ifstools filename.ifs')
         exit()
-    i = IFS(argv[1])
+    i = IFS(sys.argv[1])
     i.extract_all()
