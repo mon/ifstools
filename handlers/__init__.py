@@ -5,6 +5,11 @@ def get_folder_handlers():
         'tex' : TexFolder
     }
 
+escapes = [
+    ('_E', '.'),
+    ('__', '_'),
+]
+
 from .GenericFile import GenericFile
 from .ImageFile import ImageFile
 

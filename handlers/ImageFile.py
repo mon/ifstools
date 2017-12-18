@@ -2,6 +2,7 @@ from io import BytesIO
 from struct import unpack, pack
 
 from PIL import Image
+import lxml.etree as etree
 from kbinxml import KBinXML
 
 from . import GenericFile
@@ -20,8 +21,10 @@ dxt5_end = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
 
 class ImageFile(GenericFile):
     def __init__(self, gen_file, image_elem, fmt, compress):
-        super().__init__(gen_file.ifs, gen_file.elem, gen_file.name + '.png')
-
+        super().__init__(gen_file.ifs, gen_file.path,
+                         gen_file.name + '.png', gen_file.time,
+                         gen_file.start, gen_file.size)
+        self._packed_name = gen_file._packed_name
         self.image_elem = image_elem
         self.format = fmt
         self.compress = compress
@@ -33,8 +36,15 @@ class ImageFile(GenericFile):
             (self.imgrect[3]-self.imgrect[2])//2
         )
 
-    def load(self):
-        data = super().load()
+    @classmethod
+    def from_xml(cls, ifs, elem, name):
+        raise Exception('ImageFile must be instantiated from existing element')
+    @classmethod
+    def from_filesystem(cls, ifs, tree, name):
+        raise Exception('ImageFile must be instantiated from existing element')
+
+    def _load_from_ifs(self, convert_kbin = False):
+        data = super()._load_from_ifs()
 
         if self.compress == 'avslz':
             uncompressed_size = unpack('>I', data[:4])[0]
@@ -72,3 +82,29 @@ class ImageFile(GenericFile):
         b = BytesIO()
         im.save(b, format = 'PNG')
         return b.getvalue()
+
+    def repack(self, manifest, data_blob, progress):
+        if progress:
+            print(self.name)
+
+        data = self.load()
+
+        im = Image.open(BytesIO(data))
+        if self.format == 'argb8888rev':
+            data = im.tobytes('raw', 'BGRA')
+        else:
+            raise NotImplementedError('Unknown format {}'.format(self.format))
+
+        if self.compress == 'avslz':
+            o = data
+            uncompressed_size = len(data)
+            data = lz77.compress(data)
+            compressed_size = len(data)
+            data = pack('>I', uncompressed_size) + pack('>I', compressed_size) + data
+
+        # offset, size, timestamp
+        elem = etree.SubElement(manifest, self.packed_name)
+        elem.attrib['__type'] = '3s32'
+        elem.text = '{} {} {}'.format(len(data_blob.getvalue()), len(data), self.time)
+        data_blob.write(data)
+
