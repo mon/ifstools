@@ -53,7 +53,7 @@ class IFS:
 
     def _load_dir(self, path):
         self.default_out = path
-        self.ifs_out = dirname(path).replace('_ifs', '.ifs')
+        self.ifs_out = path.replace('_ifs', '.ifs')
 
         self.file_version = FILE_VERSION
         self.time = int(getmtime(path))
