@@ -3,6 +3,8 @@ from builtins import bytes
 from struct import unpack, pack
 from io import BytesIO
 
+from tqdm import tqdm
+
 WINDOW_SIZE = 0x1000
 WINDOW_MASK = WINDOW_SIZE - 1
 THRESHOLD = 3
@@ -57,7 +59,9 @@ def match_window(in_data, offset):
 
     return None
 
-def compress(input):
+def compress(input, progress = True):
+    pbar = tqdm(total = len(input), leave = False, unit = 'b', unit_scale = True,
+                desc = 'Compressing', disable = not progress)
     compressed = bytearray()
     input = bytes([0]*WINDOW_SIZE) + bytes(input)
     input_size = len(input)
@@ -77,9 +81,11 @@ def compress(input):
                     buf.extend(pack('>H', info))
                     bit = 0
                     current_pos += length
+                    pbar.update(length)
                 else:
                     buf.append(input[current_pos])
                     current_pos += 1
+                    pbar.update(1)
                     bit = 1
             flag_byte = (flag_byte >> 1) | ((bit & 1) << 7)
         compressed.append(flag_byte)
@@ -88,6 +94,7 @@ def compress(input):
     compressed.append(0)
     compressed.append(0)
 
+    pbar.close()
     return bytes(compressed)
 
 def compress_dummy(input):

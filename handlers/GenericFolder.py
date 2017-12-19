@@ -53,7 +53,7 @@ class GenericFolder():
 
         return cls(ifs, name, time, files, folders)
 
-    def repack(self, manifest, data_blob, progress):
+    def repack(self, manifest, data_blob, progress, recache):
         if self.name:
             manifest = etree.SubElement(manifest, self.packed_name)
             manifest.attrib['__type'] = 's32'
@@ -62,7 +62,7 @@ class GenericFolder():
                 print(self.name)
 
         for name, entry in chain(self.folders.items(), self.files.items()):
-            entry.repack(manifest, data_blob, progress)
+            entry.repack(manifest, data_blob, progress, recache)
 
     def tostring(self, indent = 0):
         ret = ''

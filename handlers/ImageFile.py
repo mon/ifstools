@@ -1,5 +1,7 @@
 from io import BytesIO
 from struct import unpack, pack
+from os.path import getmtime, isfile, join, dirname
+from os import utime, mkdir
 
 from PIL import Image
 import lxml.etree as etree
@@ -83,28 +85,60 @@ class ImageFile(GenericFile):
         im.save(b, format = 'PNG')
         return b.getvalue()
 
-    def repack(self, manifest, data_blob, progress):
+    def repack(self, manifest, data_blob, progress, recache):
         if progress:
             print(self.name)
 
-        data = self.load()
-
-        im = Image.open(BytesIO(data))
-        if self.format == 'argb8888rev':
-            data = im.tobytes('raw', 'BGRA')
-        else:
-            raise NotImplementedError('Unknown format {}'.format(self.format))
-
         if self.compress == 'avslz':
-            o = data
-            uncompressed_size = len(data)
-            data = lz77.compress(data)
-            compressed_size = len(data)
-            data = pack('>I', uncompressed_size) + pack('>I', compressed_size) + data
+            data = self.read_cache(recache)
+        else:
+            data = self._load_im()
 
         # offset, size, timestamp
         elem = etree.SubElement(manifest, self.packed_name)
         elem.attrib['__type'] = '3s32'
         elem.text = '{} {} {}'.format(len(data_blob.getvalue()), len(data), self.time)
         data_blob.write(data)
+
+    def _load_im(self):
+        data = self.load()
+
+        im = Image.open(BytesIO(data))
+        if im.mode != 'RGBA':
+            im = im.convert('RGBA')
+        if self.format == 'argb8888rev':
+            data = im.tobytes('raw', 'BGRA')
+        else:
+            raise NotImplementedError('Unknown format {}'.format(self.format))
+
+        return data
+
+    def write_cache(self, data):
+        cache = join(dirname(self.path), '_cache', self.name)
+        self._mkdir(dirname(cache))
+        with open(cache, 'wb') as f:
+            f.write(data)
+        utime(cache, (self.time, self.time))
+
+    def read_cache(self, recache):
+        cache = join(dirname(self.path), '_cache', self.name)
+        if isfile(cache) and not recache:
+            mtime = int(getmtime(cache))
+            if self.time <= mtime:
+                with open(cache, 'rb') as f:
+                    return f.read()
+        print('Not cached/out of date, compressing')
+        data = self._load_im()
+        uncompressed_size = len(data)
+        data = lz77.compress(data)
+        compressed_size = len(data)
+        data = pack('>I', uncompressed_size) + pack('>I', compressed_size) + data
+        self.write_cache(data)
+        return data
+
+    def _mkdir(self, dir):
+        try:
+            mkdir(dir)
+        except FileExistsError:
+            pass
 

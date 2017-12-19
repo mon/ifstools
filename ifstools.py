@@ -4,6 +4,7 @@ from io import BytesIO
 import hashlib
 import lxml.etree as etree
 from time import time as unixtime
+import argparse
 
 from kbinxml.kbinxml import KBinXML
 from kbinxml.bytebuffer import ByteBuffer
@@ -27,9 +28,8 @@ class IFS:
             raise IOError('Input path does not exist')
 
     def _load_ifs(self, path):
-        out = splitext(basename(path))[0] + '_ifs'
-        self.default_out = join(dirname(path), out)
-        self.ifs_out = path
+        self.ifs_out = basename(path)
+        self.default_out = splitext(self.ifs_out)[0] + '_ifs'
 
         with open(path, 'rb') as f:
             self.file = f.read()
@@ -52,8 +52,9 @@ class IFS:
         assert self.tree_size == self._tree_size()
 
     def _load_dir(self, path):
-        self.default_out = path
-        self.ifs_out = path.replace('_ifs', '.ifs')
+        path = path.rstrip('/\\') + '/'
+        self.default_out = dirname(path)
+        self.ifs_out = self.default_out.replace('_ifs', '.ifs')
 
         self.file_version = FILE_VERSION
         self.time = int(getmtime(path))
@@ -79,7 +80,10 @@ class IFS:
         tree['files'] = files
         tree['folders'] = []
         for dir in dirs:
-            tree['folders'].append(self._create_dir_tree_recurse(walker))
+            subdir = self._create_dir_tree_recurse(walker)
+            # this should probably be moved to TexFolder.py
+            if basename(subdir['path']) != '_cache':
+                tree['folders'].append(subdir)
 
         return tree
 
@@ -97,7 +101,7 @@ class IFS:
                 f.write(self.manifest.to_text().encode('utf8'))
         self._extract_tree(self.tree, progress, recurse)
 
-    def repack(self, progress = True, path = None):
+    def repack(self, progress = True, recache = False, path = None):
         if path is None:
             path = self.ifs_out
         data_blob = BytesIO()
@@ -106,7 +110,7 @@ class IFS:
         manifest_info = etree.SubElement(self.manifest.xml_doc, '_info_')
 
         # the important bit
-        self.tree.repack(self.manifest.xml_doc, data_blob, progress)
+        self.tree.repack(self.manifest.xml_doc, data_blob, progress, recache)
         data = data_blob.getvalue()
 
         data_md5 = etree.SubElement(manifest_info, 'md5')
@@ -167,7 +171,7 @@ class IFS:
             self._save_with_time(out, data, f.time)
             if recurse and f.name.endswith('.ifs'):
                 i = IFS(out)
-                i.extract_all()
+                i.extract_all(progress, recurse)
 
         for name, f in tree.folders.items():
             self._extract_tree(f, progress, recurse, join(dir, f.name))
@@ -175,7 +179,6 @@ class IFS:
         # fallback to file timestamp
         timestamp = tree.time if tree.time else self.time
         utime(outdir, (timestamp, timestamp))
-
 
     def _mkdir(self, dir):
         try:
@@ -196,12 +199,21 @@ class IFS:
         utime(filename, (time,time))
 
 if __name__ == '__main__':
-    import sys
-    if len(sys.argv) < 2:
-        print('ifstools filename.ifs OR folder_ifs')
-        exit()
-    i = IFS(sys.argv[1])
-    if i.is_file:
-        i.extract_all()
-    else:
-        i.repack()
+    parser = argparse.ArgumentParser(description='Unpack/pack IFS files and textures')
+    parser.add_argument('files', metavar='file.ifs|folder_ifs', type=str, nargs='+',
+                       help='files/folders to process. Files will be unpacked, folders will be repacked')
+    parser.add_argument('--recache', action='store_true', help='ignore texture cache, recompress all')
+    parser.add_argument('-s', '--silent', action='store_false', dest='progress',
+                       help='don\'t display files as they are processed')
+    parser.add_argument('-r', '--norecurse', action='store_false', dest='recurse',
+                       help='if file contains another IFS, don\'t extract its contents')
+
+    args = parser.parse_args()
+
+    for f in args.files:
+        i = IFS(f)
+        path = None
+        if i.is_file:
+            i.extract_all(args.progress, args.recurse)
+        else:
+            i.repack(args.progress, args.recache)

@@ -53,7 +53,7 @@ class GenericFile(object):
         self.size = len(ret)
         return ret
 
-    def repack(self, manifest, data_blob, progress):
+    def repack(self, manifest, data_blob, progress, recache):
         if progress:
             print(self.name)
         elem = etree.SubElement(manifest, self.packed_name)
