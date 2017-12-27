@@ -1,0 +1,4 @@
+lxml
+tqdm
+pillow
+git+https://github.com/mon/kbinxml.git

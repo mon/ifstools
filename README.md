@@ -1,7 +1,11 @@
 # ifstools
 Extractor for Konmai IFS files.
 
-Requires [kbinxml](https://github.com/mon/kbinxml/).
+## Install
+`pip install -r requirements.txt`
+
+## Usage
+`python ifstools.py [filename]`
 
 Features:
 - Converts all textures to png without requiring a second program
