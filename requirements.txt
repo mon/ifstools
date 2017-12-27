@@ -1,4 +1,5 @@
 lxml
 tqdm
 pillow
+future
 git+https://github.com/mon/kbinxml.git

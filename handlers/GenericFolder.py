@@ -6,7 +6,7 @@ import lxml.etree as etree
 from . import get_folder_handlers, escapes
 from .GenericFile import GenericFile
 
-class GenericFolder():
+class GenericFolder(object):
 
     def __init__(self, ifs, name, time, files, folders):
         self.ifs = ifs

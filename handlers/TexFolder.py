@@ -2,18 +2,18 @@ from . import MD5Folder, GenericFile, ImageFile
 
 class TexFolder(MD5Folder):
     def __init__(self, ifs, name, time, files, folders):
-        super().__init__(ifs, name, time, files, folders)
+        super(TexFolder, self).__init__(ifs, name, time, files, folders)
         self.compress = self.info_kbin.xml_doc.attrib.get('compress')
 
     @classmethod
     def from_xml(cls, ifs, element, name = ''):
-        self = super().from_xml(ifs, element, name, 'image', '.png')
+        self = super(TexFolder, cls).from_xml(ifs, element, name, 'image', '.png')
         self._create_images()
         return self
 
     @classmethod
     def from_filesystem(cls, ifs, tree, name = ''):
-        self = super().from_filesystem(ifs, tree, name, 'image', '.png')
+        self = super(TexFolder, cls).from_filesystem(ifs, tree, name, 'image', '.png')
         self._create_images()
         return self
 

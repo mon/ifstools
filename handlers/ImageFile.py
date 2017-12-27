@@ -2,6 +2,7 @@ from io import BytesIO
 from struct import unpack, pack
 from os.path import getmtime, isfile, join, dirname
 from os import utime, mkdir
+import errno
 
 from PIL import Image
 import lxml.etree as etree
@@ -23,7 +24,7 @@ dxt5_end = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
 
 class ImageFile(GenericFile):
     def __init__(self, gen_file, image_elem, fmt, compress):
-        super().__init__(gen_file.ifs, gen_file.path,
+        super(ImageFile, self).__init__(gen_file.ifs, gen_file.path,
                          gen_file.name + '.png', gen_file.time,
                          gen_file.start, gen_file.size)
         self._packed_name = gen_file._packed_name
@@ -46,7 +47,7 @@ class ImageFile(GenericFile):
         raise Exception('ImageFile must be instantiated from existing element')
 
     def _load_from_ifs(self, convert_kbin = False):
-        data = super()._load_from_ifs()
+        data = super(ImageFile, self)._load_from_ifs()
 
         if self.compress == 'avslz':
             uncompressed_size = unpack('>I', data[:4])[0]
@@ -137,8 +138,17 @@ class ImageFile(GenericFile):
         return data
 
     def _mkdir(self, dir):
-        try:
-            mkdir(dir)
-        except FileExistsError:
-            pass
+        try: # python 3
+            try:
+                mkdir(dir)
+            except FileExistsError:
+                pass
+        except NameError: # python 2
+            try:
+                mkdir(dir)
+            except OSError as e:
+                if e.errno == errno.EEXIST:
+                    pass
+                else:
+                    raise
 

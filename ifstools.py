@@ -1,5 +1,6 @@
 from os.path import basename, dirname, splitext, join, isdir, isfile, getmtime
 from os import mkdir, utime, walk
+import errno
 from io import BytesIO
 import hashlib
 import lxml.etree as etree
@@ -181,10 +182,19 @@ class IFS:
         utime(outdir, (timestamp, timestamp))
 
     def _mkdir(self, dir):
-        try:
-            mkdir(dir)
-        except FileExistsError:
-            pass
+        try: # python 3
+            try:
+                mkdir(dir)
+            except FileExistsError:
+                pass
+        except NameError: # python 2
+            try:
+                mkdir(dir)
+            except OSError as e:
+                if e.errno == errno.EEXIST:
+                    pass
+                else:
+                    raise
 
     def load_file(self, start, size):
         start = self.header_end+start

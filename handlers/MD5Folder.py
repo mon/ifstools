@@ -7,7 +7,7 @@ from . import GenericFolder
 class MD5Folder(GenericFolder):
 
     def __init__(self, ifs, name, time, files, folders):
-        super().__init__(ifs, name, time, files, folders)
+        super(MD5Folder, self).__init__(ifs, name, time, files, folders)
 
         for filename, file in self.files.items():
             if filename.endswith('.xml'):
@@ -20,13 +20,13 @@ class MD5Folder(GenericFolder):
 
     @classmethod
     def from_xml(cls, ifs, element, name = '', md5_tag = None, extension = None):
-        self = super().from_xml(ifs, element, name)
+        self = super(MD5Folder, cls).from_xml(ifs, element, name)
         self._apply_md5(md5_tag, extension)
         return self
 
     @classmethod
     def from_filesystem(cls, ifs, tree, name = '', md5_tag = None, extension = None):
-        self = super().from_filesystem(ifs, tree, name)
+        self = super(MD5Folder, cls).from_filesystem(ifs, tree, name)
         self._apply_md5(md5_tag, extension)
         return self
 
