@@ -60,7 +60,7 @@ def match_window(in_data, offset):
 
     return None
 
-def compress(input, progress = True):
+def compress(input, progress = False):
     pbar = tqdm(total = len(input), leave = False, unit = 'b', unit_scale = True,
                 desc = 'Compressing', disable = not progress)
     compressed = bytearray()

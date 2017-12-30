@@ -10,6 +10,7 @@ from kbinxml import KBinXML
 
 from . import GenericFile
 from . import lz77
+from .. import utils
 
 # header for a standard DDS with DXT5 compression and RGBA pixels
 # gap placed for image height/width insertion
@@ -23,12 +24,14 @@ dxt5_end = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
            b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 
 class ImageFile(GenericFile):
-    def __init__(self, gen_file, image_elem, fmt, compress):
-        super(ImageFile, self).__init__(gen_file.ifs, gen_file.path,
-                         gen_file.name + '.png', gen_file.time,
-                         gen_file.start, gen_file.size)
-        self._packed_name = gen_file._packed_name
-        self.image_elem = image_elem
+    def __init__(self, ifs_data, obj, parent = None, path = '', name = ''):
+        raise Exception('ImageFile must be instantiated from existing GenericFile with ImageFile.upgrade_generic')
+
+    @classmethod
+    def upgrade_generic(cls, gen_file, image_elem, fmt, compress):
+        self = gen_file
+        self.__class__ = cls
+
         self.format = fmt
         self.compress = compress
 
@@ -39,15 +42,14 @@ class ImageFile(GenericFile):
             (self.imgrect[3]-self.imgrect[2])//2
         )
 
-    @classmethod
-    def from_xml(cls, ifs, elem, name):
-        raise Exception('ImageFile must be instantiated from existing element')
-    @classmethod
-    def from_filesystem(cls, ifs, tree, name):
-        raise Exception('ImageFile must be instantiated from existing element')
+    def extract(self, base, use_cache = True):
+        GenericFile.extract(self, base)
+
+        if use_cache and self.compress and self.from_ifs and self.format == 'argb8888rev':
+            self.write_cache(GenericFile._load_from_ifs(self), base)
 
     def _load_from_ifs(self, convert_kbin = False):
-        data = super(ImageFile, self)._load_from_ifs()
+        data = GenericFile._load_from_ifs(self, False)
 
         if self.compress == 'avslz':
             uncompressed_size = unpack('>I', data[:4])[0]
@@ -86,12 +88,13 @@ class ImageFile(GenericFile):
         im.save(b, format = 'PNG')
         return b.getvalue()
 
-    def repack(self, manifest, data_blob, progress, recache):
-        if progress:
-            print(self.name)
+    def repack(self, manifest, data_blob, tqdm_progress):
+        if tqdm_progress:
+            tqdm_progress.write(self.full_path)
+            tqdm_progress.update(1)
 
         if self.compress == 'avslz':
-            data = self.read_cache(recache)
+            data = self.read_cache()
         else:
             data = self._load_im()
 
@@ -107,48 +110,45 @@ class ImageFile(GenericFile):
         im = Image.open(BytesIO(data))
         if im.mode != 'RGBA':
             im = im.convert('RGBA')
-        if self.format == 'argb8888rev':
+        # we translate dxt5 to arb since dxt5 is lossy and not in python
+        if self.format == 'argb8888rev' or self.format == 'dxt5':
             data = im.tobytes('raw', 'BGRA')
         else:
             raise NotImplementedError('Unknown format {}'.format(self.format))
 
         return data
 
-    def write_cache(self, data):
-        cache = join(dirname(self.path), '_cache', self.name)
-        self._mkdir(dirname(cache))
-        with open(cache, 'wb') as f:
-            f.write(data)
-        utime(cache, (self.time, self.time))
-
-    def read_cache(self, recache):
-        cache = join(dirname(self.path), '_cache', self.name)
-        if isfile(cache) and not recache:
+    @property
+    def needs_preload(self):
+        cache = join(dirname(self.disk_path), '_cache', self._packed_name)
+        if isfile(cache):
             mtime = int(getmtime(cache))
             if self.time <= mtime:
-                with open(cache, 'rb') as f:
-                    return f.read()
-        print('Not cached/out of date, compressing')
+                return False
+        return True
+
+    def preload(self, use_cache):
+        if not self.needs_preload and use_cache:
+            return
+        # Not cached/out of date, compressing
         data = self._load_im()
         uncompressed_size = len(data)
         data = lz77.compress(data)
         compressed_size = len(data)
         data = pack('>I', uncompressed_size) + pack('>I', compressed_size) + data
         self.write_cache(data)
-        return data
 
-    def _mkdir(self, dir):
-        try: # python 3
-            try:
-                mkdir(dir)
-            except FileExistsError:
-                pass
-        except NameError: # python 2
-            try:
-                mkdir(dir)
-            except OSError as e:
-                if e.errno == errno.EEXIST:
-                    pass
-                else:
-                    raise
+    def write_cache(self, data, base = None):
+        if not self.from_ifs:
+            base = self.base_path
+        cache = join(base, self.path, '_cache', self._packed_name)
+        utils.mkdir_silent(dirname(cache))
+        with open(cache, 'wb') as f:
+            f.write(data)
+        utime(cache, (self.time, self.time))
+
+    def read_cache(self):
+        cache = join(dirname(self.disk_path), '_cache', self._packed_name)
+        with open(cache, 'rb') as f:
+            return f.read()
 
