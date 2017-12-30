@@ -1,5 +1,11 @@
 import argparse
 import os
+try:
+    # py 2
+    input = raw_input
+except NameError:
+    # py 3
+    pass
 
 from ifs import IFS
 
