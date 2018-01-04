@@ -12,11 +12,11 @@ Extractor for Konmai IFS files.
 - Dumps the ifs manifest so you can explore the format
 
 ## Install
-`pip install -r requirements.txt`
+`pip install git+https://github.com/mon/kbinxml/ git+https://github.com/mon/ifstools/`
 
 ## Usage
 ```
-usage: ifstools.py [-h] [-y] [-o OUT_DIR] [--tex-only] [--nocache] [-s] [-r]
+usage: ifstools [-h] [-y] [-o OUT_DIR] [--tex-only] [--nocache] [-s] [-r]
                    file.ifs|folder_ifs [file.ifs|folder_ifs ...]
 
 Unpack/pack IFS files and textures

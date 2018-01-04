@@ -7,7 +7,7 @@ except NameError:
     # py 3
     pass
 
-from ifs import IFS
+from .ifs import IFS
 
 def get_choice(prompt):
     while True:
@@ -21,7 +21,7 @@ def get_choice(prompt):
         else:
             print('Please answer y/n')
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description='Unpack/pack IFS files and textures')
     parser.add_argument('files', metavar='file.ifs|folder_ifs', type=str, nargs='+',
                        help='files/folders to process. Files will be unpacked, folders will be repacked')
@@ -55,3 +55,7 @@ if __name__ == '__main__':
             i.extract(args.progress, args.use_cache, args.recurse, args.tex_only, path)
         else:
             i.repack(args.progress, args.use_cache, path)
+
+
+if __name__ == '__main__':
+    main()

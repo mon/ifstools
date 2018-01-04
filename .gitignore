@@ -2,3 +2,6 @@ __pycache__/
 *.ifs
 *_ifs
 *.pyc
+build/
+dist/
+ifstools.egg-info/
