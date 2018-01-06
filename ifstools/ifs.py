@@ -67,7 +67,9 @@ class IFS:
         self.manifest = KBinXML(file.data[HEADER_SIZE:])
         self.tree = GenericFolder(self.data_blob, self.manifest.xml_doc)
 
-        assert ifs_tree_size == self.tree_size
+        if ifs_tree_size != self.tree_size:
+            print('Expected tree size {} but got {}. Repacking may fail!'
+                .format(self.tree_size, ifs_tree_size))
 
     def load_dir(self, path):
         self.is_file = False
