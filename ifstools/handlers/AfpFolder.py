@@ -4,6 +4,8 @@ class AfpFolder(MD5Folder):
 
     def tree_complete(self):
         MD5Folder.tree_complete(self)
+        if not self.info_kbin:
+            return
 
         # findall needs xpath or it'll only search direct children
         names = []
@@ -15,5 +17,7 @@ class AfpFolder(MD5Folder):
                 for shape in self._split_ints(geo.text):
                     geo_names.append('{}_shape{}'.format(name, shape))
 
-        self._apply_md5_folder(names, self.folders['bsi'])
-        self._apply_md5_folder(geo_names, self.parent.folders['geo'])
+        if 'bsi' in self.folders:
+            self._apply_md5_folder(names, self.folders['bsi'])
+        if 'geo' in self.parent.folders:
+            self._apply_md5_folder(geo_names, self.parent.folders['geo'])

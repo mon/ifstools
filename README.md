@@ -12,7 +12,8 @@ Extractor for Konmai IFS files.
 - Dumps the ifs manifest so you can explore the format
 
 ## Install
-`pip install git+https://github.com/mon/kbinxml/ git+https://github.com/mon/ifstools/`
+Install Python, then:
+`pip install ifstools`
 
 ## Usage
 ```

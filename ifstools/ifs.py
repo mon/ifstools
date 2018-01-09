@@ -67,9 +67,8 @@ class IFS:
         self.manifest = KBinXML(file.data[HEADER_SIZE:])
         self.tree = GenericFolder(self.data_blob, self.manifest.xml_doc)
 
-        if ifs_tree_size != self.tree_size:
-            print('Expected tree size {} but got {}. Repacking may fail!'
-                .format(self.tree_size, ifs_tree_size))
+        # IFS files repacked with other tools usually have wrong values - don't validate this
+        #assert ifs_tree_size == self.manifest.mem_size
 
     def load_dir(self, path):
         self.is_file = False
@@ -142,7 +141,7 @@ class IFS:
             if recurse and f.name.endswith('.ifs'):
                 rpath = join(path, f.full_path)
                 i = IFS(rpath)
-                i.extract(progress, use_cache, recurse, rpath.replace('.ifs','_ifs'))
+                i.extract(progress, use_cache, recurse, tex_only, rpath.replace('.ifs','_ifs'))
 
         ''' If you can get shared memory for IFS.data_blob working, this will
             be a lot faster. As it is, it gets pickled for every file, and
@@ -188,7 +187,7 @@ class IFS:
         head.append_u16(self.file_version)
         head.append_u16(self.file_version ^ 0xFFFF)
         head.append_u32(int(unixtime()))
-        head.append_u32(self.tree_size)
+        head.append_u32(self.manifest.mem_size)
         head.append_u32(manifest_end)
 
         ifs_file.write(head.data)
@@ -227,20 +226,3 @@ class IFS:
         self.tree.repack(self.manifest.xml_doc, self.data_blob, tqdm_progress)
 
         return self.data_blob.getvalue()
-
-    # suspected to be the in-memory representation
-    @property
-    def tree_size(self):
-        BASE_SIZE = 856
-        return BASE_SIZE + self._tree_size_recurse(self.tree)
-
-    def _tree_size_recurse(self, tree, depth = 0):
-        FILE = 64
-        FOLDER = 56
-        DEPTH_MULTIPLIER = 16
-
-        size = len(tree.files) * FILE
-        size += len(tree.folders) * (FOLDER - depth*DEPTH_MULTIPLIER)
-        for name, folder in tree.folders.items():
-            size += self._tree_size_recurse(folder, depth+1)
-        return size

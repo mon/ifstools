@@ -8,13 +8,14 @@ from .Node import Node
 
 class GenericFolder(Node):
 
-    def __init__(self, ifs_data, obj, parent = None, path = '', name = ''):
+    def __init__(self, ifs_data, obj, parent = None, path = '', name = '', has_super = False):
         # circular dependencies mean we import here
         from . import AfpFolder, TexFolder
         self.folder_handlers = {
             'afp' : AfpFolder,
             'tex' : TexFolder,
         }
+        self.has_super = has_super
         Node.__init__(self, ifs_data, obj, parent, path, name)
 
     file_handler = GenericFile
@@ -29,9 +30,16 @@ class GenericFolder(Node):
             filename = Node.fix_name(child.tag)
             if filename == '_info_': # metadata
                 continue
-            elif list(child): # folder
+            elif filename == '_super_':
+                self.has_super = True
+            # folder: has children or timestamp only
+            elif list(child) or len(child.text.split(' ')) == 1:
+                # note: files with 'super' references have 'i' tags as backrefs
+                # We just ignore these
+                if self.has_super and child[0].tag == 'i':
+                    continue
                 handler = self.folder_handlers.get(filename, GenericFolder)
-                self.folders[filename] = handler(self.ifs_data, child, self, self.full_path, filename)
+                self.folders[filename] = handler(self.ifs_data, child, self, self.full_path, filename, self.has_super)
             else: # file
                 self.files[filename] = self.file_handler(self.ifs_data, child, self, self.full_path, filename)
 

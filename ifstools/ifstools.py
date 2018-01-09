@@ -52,8 +52,12 @@ def main():
                 continue
 
         if i.is_file:
+            if args.progress:
+                print('Extracting...')
             i.extract(args.progress, args.use_cache, args.recurse, args.tex_only, path)
         else:
+            if args.progress:
+                print('Repacking...')
             i.repack(args.progress, args.use_cache, path)
 
 
