@@ -15,7 +15,6 @@ from .handlers import GenericFolder, MD5Folder, ImageFile
 from . import utils
 
 SIGNATURE = 0x6CAD8F89
-HEADER_SIZE = 36
 
 FILE_VERSION = 3
 
@@ -62,9 +61,12 @@ class IFS:
         ifs_tree_size = file.get_u32()
         manifest_end = file.get_u32()
         self.data_blob = bytes(file.data[manifest_end:])
-        # 16 bytes for manifest md5, unchecked
 
-        self.manifest = KBinXML(file.data[HEADER_SIZE:])
+        if self.file_version > 1:
+            # md5 of manifest, unchecked
+            file.offset += 16
+
+        self.manifest = KBinXML(file.data[file.offset:])
         self.tree = GenericFolder(self.data_blob, self.manifest.xml_doc)
 
         # IFS files repacked with other tools usually have wrong values - don't validate this
@@ -111,7 +113,8 @@ class IFS:
     def __str__(self):
         return str(self.tree)
 
-    def extract(self, progress = True, use_cache = True, recurse = True, tex_only = False, path = None):
+    def extract(self, progress = True, use_cache = True, recurse = True,
+                tex_only = False, extract_manifest = False, path = None):
         if path is None:
             path = self.folder_out
         if tex_only and 'tex' not in self.tree.folders:
@@ -119,7 +122,7 @@ class IFS:
         utils.mkdir_silent(path)
         utime(path, (self.time, self.time))
 
-        if self.manifest and not tex_only:
+        if extract_manifest and self.manifest and not tex_only:
             with open(join(path, 'ifs_manifest.xml'), 'wb') as f:
                 f.write(self.manifest.to_text().encode('utf8'))
 
@@ -141,7 +144,8 @@ class IFS:
             if recurse and f.name.endswith('.ifs'):
                 rpath = join(path, f.full_path)
                 i = IFS(rpath)
-                i.extract(progress, use_cache, recurse, tex_only, rpath.replace('.ifs','_ifs'))
+                i.extract(progress=progress, use_cache=use_cache, recurse=recurse,
+                    tex_only=tex_only, extract_manifest=extract_manifest, path=rpath.replace('.ifs','_ifs'))
 
         ''' If you can get shared memory for IFS.data_blob working, this will
             be a lot faster. As it is, it gets pickled for every file, and
@@ -179,7 +183,6 @@ class IFS:
         data_size.text = str(len(data))
 
         manifest_bin = self.manifest.to_binary()
-        manifest_end = HEADER_SIZE + len(manifest_bin)
         manifest_hash = hashlib.md5(manifest_bin).digest()
 
         head = ByteBuffer()
@@ -188,10 +191,17 @@ class IFS:
         head.append_u16(self.file_version ^ 0xFFFF)
         head.append_u32(int(unixtime()))
         head.append_u32(self.manifest.mem_size)
+
+        manifest_end = len(manifest_bin) + head.offset + 4
+        if self.file_version > 1:
+            manifest_end += 16
+
         head.append_u32(manifest_end)
 
+        if self.file_version > 1:
+            head.append_bytes(manifest_hash)
+
         ifs_file.write(head.data)
-        ifs_file.write(manifest_hash)
         ifs_file.write(manifest_bin)
         ifs_file.write(data)
 

@@ -60,6 +60,10 @@ class GenericFile(Node):
         # offset, size, timestamp
         elem.text = '{} {} {}'.format(len(data_blob.getvalue()), len(data), self.time)
         data_blob.write(data)
+        # 16 byte alignment
+        align = len(data) % 16
+        if align:
+            data_blob.write(b'\0' * (16-align))
 
     @property
     def disk_path(self):

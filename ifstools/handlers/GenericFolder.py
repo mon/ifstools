@@ -1,5 +1,6 @@
 from itertools import chain
 from os.path import getmtime, basename, join
+from collections import OrderedDict
 
 import lxml.etree as etree
 
@@ -24,7 +25,7 @@ class GenericFolder(Node):
         if element.text:
             self.time = int(element.text)
 
-        self.files = {}
+        self.files = OrderedDict()
         self.folders = {}
         for child in element.iterchildren(tag=etree.Element):
             filename = Node.fix_name(child.tag)

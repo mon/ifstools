@@ -103,6 +103,10 @@ class ImageFile(GenericFile):
         elem.attrib['__type'] = '3s32'
         elem.text = '{} {} {}'.format(len(data_blob.getvalue()), len(data), self.time)
         data_blob.write(data)
+        # 16 byte alignment
+        align = len(data) % 16
+        if align:
+            data_blob.write(b'\0' * (16-align))
 
     def _load_im(self):
         data = self.load()

@@ -6,12 +6,12 @@ requires = [
         'lxml',
         'tqdm',
         'pillow',
-        'kbinxml>=1.2',
+        'kbinxml>=1.4',
 ]
 if sys.version_info < (3,0):
     requires.append('future')
 
-version = '1.2'
+version = '1.3'
 setup(
     name='ifstools',
     description='Extractor/repacker for Konmai IFS files',

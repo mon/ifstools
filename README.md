@@ -17,24 +17,32 @@ Install Python, then:
 
 ## Usage
 ```
-usage: ifstools [-h] [-y] [-o OUT_DIR] [--tex-only] [--nocache] [-s] [-r]
-                   file.ifs|folder_ifs [file.ifs|folder_ifs ...]
+usage: ifstools [-h] [-e] [-y] [-o OUT_DIR] [--tex-only] [--nocache] [-m] [-s]
+                [-r]
+                file_to_unpack.ifs|folder_to_repack_ifs
+                [file_to_unpack.ifs|folder_to_repack_ifs ...]
 
 Unpack/pack IFS files and textures
 
 positional arguments:
-  file.ifs|folder_ifs  files/folders to process. Files will be unpacked,
-                       folders will be repacked
+  file_to_unpack.ifs|folder_to_repack_ifs
+                        files/folders to process. Files will be unpacked,
+                        folders will be repacked
 
 optional arguments:
-  -h, --help           show this help message and exit
-  -y                   don't prompt for file/folder overwrite
-  -o OUT_DIR           output directory
-  --tex-only           only extract textures
-  --nocache            ignore texture cache, recompress all
-  -s, --silent         don't display files as they are processed
-  -r, --norecurse      if file contains another IFS, don't extract its
-                       contents
+  -h, --help            show this help message and exit
+  -e, --extract-folders
+                        do not repack folders, instead unpack any IFS files
+                        inside them
+  -y                    don't prompt for file/folder overwrite
+  -o OUT_DIR            output directory
+  --tex-only            only extract textures
+  --nocache             ignore texture cache, recompress all
+  -m, --extract-manifest
+                        extract the IFS manifest for inspection
+  -s, --silent          don't display files as they are processed
+  -r, --norecurse       if file contains another IFS, don't extract its
+                        contents
 ```
 
 Notes:
