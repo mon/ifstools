@@ -1,5 +1,5 @@
 from itertools import chain
-from os.path import getmtime, basename, join
+from os.path import getmtime, basename, dirname, join, realpath
 from collections import OrderedDict
 
 import lxml.etree as etree
@@ -9,14 +9,14 @@ from .Node import Node
 
 class GenericFolder(Node):
 
-    def __init__(self, ifs_data, obj, parent = None, path = '', name = '', has_super = False):
+    def __init__(self, ifs_data, obj, parent = None, path = '', name = '', supers = None):
         # circular dependencies mean we import here
         from . import AfpFolder, TexFolder
         self.folder_handlers = {
             'afp' : AfpFolder,
             'tex' : TexFolder,
         }
-        self.has_super = has_super
+        self.supers = supers if supers else []
         Node.__init__(self, ifs_data, obj, parent, path, name)
 
     file_handler = GenericFile
@@ -27,22 +27,29 @@ class GenericFolder(Node):
 
         self.files = OrderedDict()
         self.folders = {}
+
+        my_path = dirname(realpath(self.ifs_data.file.name))
+        # muh circular deps
+        from ..ifs import IFS
+
         for child in element.iterchildren(tag=etree.Element):
             filename = Node.fix_name(child.tag)
             if filename == '_info_': # metadata
                 continue
-            elif filename == '_super_':
-                self.has_super = True
-            # folder: has children or timestamp only
-            elif list(child) or len(child.text.split(' ')) == 1:
-                # note: files with 'super' references have 'i' tags as backrefs
-                # We just ignore these
-                if self.has_super and child[0].tag == 'i':
-                    continue
+            elif filename == '_super_': # sub-reference
+                self.supers.append(IFS(join(my_path, child.text)).data_blob)
+            # folder: has children or timestamp only, and isn't a reference
+            elif (list(child) or len(child.text.split(' ')) == 1) and child[0].tag != 'i':
                 handler = self.folder_handlers.get(filename, GenericFolder)
-                self.folders[filename] = handler(self.ifs_data, child, self, self.full_path, filename, self.has_super)
+                self.folders[filename] = handler(self.ifs_data, child, self, self.full_path, filename, self.supers)
             else: # file
                 self.files[filename] = self.file_handler(self.ifs_data, child, self, self.full_path, filename)
+                if list(child) and child[0].tag == 'i':
+                    # backref
+                    super_ref = int(child[0].text)
+                    if super_ref > len(self.supers):
+                        raise IOError('IFS references super-IFS {} but we only have {}'.format(super_ref, len(self.supers)))
+                    self.files[filename].ifs_data = self.supers[super_ref - 1]
 
         if not self.full_path: # root
             self.tree_complete()

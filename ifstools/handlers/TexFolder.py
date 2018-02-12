@@ -13,8 +13,8 @@ class TextureList(GenericFile):
         return k.to_binary()
 
 class TexFolder(MD5Folder):
-    def __init__(self, ifs_data, obj, parent = None, path = '', name = '', has_super = False):
-        MD5Folder.__init__(self, ifs_data, obj, parent, path, name, has_super, 'image', '.png')
+    def __init__(self, ifs_data, obj, parent = None, path = '', name = '', supers = None):
+        MD5Folder.__init__(self, ifs_data, obj, parent, path, name, supers, 'image', '.png')
 
     def tree_complete(self):
         MD5Folder.tree_complete(self)
