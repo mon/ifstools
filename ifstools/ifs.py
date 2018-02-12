@@ -31,6 +31,16 @@ def _load(args):
     f.preload(use_cache)
     return f.full_path
 
+class FileBlob(object):
+    ''' a basic wrapper around a file to deal with IFS data offset '''
+    def __init__(self, file, offset):
+        self.file = file
+        self.offset = offset
+
+    def get(self, offset, size):
+        self.file.seek(offset + self.offset)
+        return self.file.read(size)
+
 class IFS:
     def __init__(self, path):
         if isfile(path):
@@ -38,7 +48,7 @@ class IFS:
         elif isdir(path):
             self.load_dir(path)
         else:
-            raise IOError('Input path does not exist')
+            raise IOError('Input path {} does not exist'.format(path))
 
     def load_ifs(self, path):
         self.is_file = True
@@ -48,25 +58,26 @@ class IFS:
         self.folder_out = splitext(name)[0] + '_ifs'
         self.default_out = self.folder_out
 
-        with open(path, 'rb') as f:
-            file = ByteBuffer(f.read())
+        self.file = open(path, 'rb')
+        header = ByteBuffer(self.file.read(36))
 
-        signature = file.get_u32()
+        signature = header.get_u32()
         if signature != SIGNATURE:
             raise IOError('Given file was not an IFS file!')
-        self.file_version = file.get_u16()
+        self.file_version = header.get_u16()
         # next u16 is just NOT(version)
-        assert file.get_u16() ^ self.file_version == 0xFFFF
-        self.time = file.get_u32()
-        ifs_tree_size = file.get_u32()
-        manifest_end = file.get_u32()
-        self.data_blob = bytes(file.data[manifest_end:])
+        assert header.get_u16() ^ self.file_version == 0xFFFF
+        self.time = header.get_u32()
+        ifs_tree_size = header.get_u32()
+        manifest_end = header.get_u32()
+        self.data_blob = FileBlob(self.file, manifest_end)
 
         if self.file_version > 1:
             # md5 of manifest, unchecked
-            file.offset += 16
+            header.offset += 16
 
-        self.manifest = KBinXML(file.data[file.offset:])
+        self.file.seek(header.offset)
+        self.manifest = KBinXML(self.file.read(manifest_end-header.offset))
         self.tree = GenericFolder(self.data_blob, self.manifest.xml_doc)
 
         # IFS files repacked with other tools usually have wrong values - don't validate this
@@ -110,6 +121,10 @@ class IFS:
 
         return tree
 
+    def close(self):
+        if self.file:
+            self.file.close()
+
     def __str__(self):
         return str(self.tree)
 
@@ -147,9 +162,7 @@ class IFS:
                 i.extract(progress=progress, use_cache=use_cache, recurse=recurse,
                     tex_only=tex_only, extract_manifest=extract_manifest, path=rpath.replace('.ifs','_ifs'))
 
-        ''' If you can get shared memory for IFS.data_blob working, this will
-            be a lot faster. As it is, it gets pickled for every file, and
-            is 3x slower than the serial implementation even with image extraction
+        ''' Todo: reimplement this since we're using file objects now
         '''
         # extract the tree
         '''p = Pool()

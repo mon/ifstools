@@ -27,9 +27,7 @@ class GenericFile(Node):
             return self._load_from_filesystem()
 
     def _load_from_ifs(self, convert_kbin = True):
-        end = self.start + self.size
-        assert self.start <= len(self.ifs_data) and end <= len(self.ifs_data)
-        data = self.ifs_data[self.start:end]
+        data = self.ifs_data.get(self.start, self.size)
 
         if convert_kbin and self.name.endswith('.xml') and KBinXML.is_binary_xml(data):
             data = KBinXML(data).to_text().encode('utf8')
