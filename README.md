@@ -12,8 +12,11 @@ Extractor for Konmai IFS files.
 - Dumps the ifs manifest so you can explore the format
 
 ## Install
-Install Python, then:
-`pip install ifstools`
+Just want an exe? [Download the latest](https://github.com/mon/ifstools/releases).
+
+Have Python installed? Do this:
+`pip install ifstools`  
+Then run `ifstools` from anywhere in a command prompt.
 
 ## Usage
 ```
@@ -44,6 +47,11 @@ optional arguments:
   -r, --norecurse       if file contains another IFS, don't extract its
                         contents
 ```
+
+## Build an exe
+`pip install pyinstaller`  
+`pyinstaller ifstools_bin.py --onefile -n ifstools`  
+Recommend doing this in a fresh venv so the module finder doesn't include more than required.
 
 Notes:
 - dxt5 texture repacking is not fully supported - they will silently be converted to argb8888rev
