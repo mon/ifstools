@@ -10,18 +10,8 @@ from kbinxml import KBinXML
 
 from . import GenericFile
 from . import lz77
+from .ImageDecoders import image_formats, cachable_formats
 from .. import utils
-
-# header for a standard DDS with DXT5 compression and RGBA pixels
-# gap placed for image height/width insertion
-dxt5_start = b'DDS |\x00\x00\x00\x07\x10\x00\x00'
-dxt5_end = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
-           b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
-           b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
-           b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00 \x00\x00\x00\x04' + \
-           b'\x00\x00\x00DXT5\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
-           b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00' + \
-           b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 
 class ImageFile(GenericFile):
     def __init__(self, ifs_data, obj, parent = None, path = '', name = ''):
@@ -45,7 +35,7 @@ class ImageFile(GenericFile):
     def extract(self, base, use_cache = True):
         GenericFile.extract(self, base)
 
-        if use_cache and self.compress and self.from_ifs and self.format == 'argb8888rev':
+        if use_cache and self.compress and self.from_ifs and self.format in cachable_formats:
             self.write_cache(GenericFile._load_from_ifs(self), base)
 
     def _load_from_ifs(self, convert_kbin = False):
@@ -64,23 +54,9 @@ class ImageFile(GenericFile):
             else:
                 data = data[8:] + data[:8]
 
-        if self.format == 'argb8888rev':
-            need = self.img_size[0] * self.img_size[1] * 4
-            if len(data) < need:
-                print('WARNING: Not enough image data for {}, padding'.format(self.name))
-                data += b'\x00' * (need-len(data))
-            im = Image.frombytes('RGBA', self.img_size, data, 'raw', 'BGRA')
-        elif self.format == 'dxt5':
-            b = BytesIO()
-            b.write(dxt5_start)
-            b.write(pack('<2I', self.img_size[1], self.img_size[0]))
-            b.write(dxt5_end)
-            # the data has swapped endianness for every WORD
-            l = len(data)//2
-            big = unpack('>{}H'.format(l), data)
-            little = pack('<{}H'.format(l), *big)
-            b.write(little)
-            im = Image.open(b)
+        if self.format in image_formats:
+            decoder = image_formats[self.format]['decoder']
+            im = decoder(self, data)
         else:
             raise NotImplementedError('Unknown format {}'.format(self.format))
 
@@ -114,9 +90,13 @@ class ImageFile(GenericFile):
         im = Image.open(BytesIO(data))
         if im.mode != 'RGBA':
             im = im.convert('RGBA')
-        # we translate dxt5 to arb since dxt5 is lossy and not in python
-        if self.format == 'argb8888rev' or self.format == 'dxt5':
-            data = im.tobytes('raw', 'BGRA')
+
+        if self.format in image_formats:
+            encoder = image_formats[self.format]['encoder']
+            if encoder is None:
+                # everything else becomes argb8888rev
+                encoder = image_formats['argb8888rev']['encoder']
+            data = encoder(self, im)
         else:
             raise NotImplementedError('Unknown format {}'.format(self.format))
 
