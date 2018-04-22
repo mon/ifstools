@@ -25,14 +25,12 @@ def get_choice(prompt):
 def extract(i, args, path):
     if args.progress:
         print('Extracting...')
-    i.extract(progress = args.progress, use_cache = args.use_cache,
-        recurse = args.recurse, tex_only = args.tex_only, path = path,
-        extract_manifest = args.extract_manifest)
+    i.extract(path=path, **vars(args))
 
 def repack(i, args, path):
     if args.progress:
         print('Repacking...')
-    i.repack(progress = args.progress, use_cache = args.use_cache, path = path)
+    i.repack(path=path, **vars(args))
 
 def main():
     multiprocessing.freeze_support() # pyinstaller

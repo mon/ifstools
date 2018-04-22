@@ -32,8 +32,8 @@ class ImageFile(GenericFile):
             (self.imgrect[3]-self.imgrect[2])//2
         )
 
-    def extract(self, base, use_cache = True):
-        GenericFile.extract(self, base)
+    def extract(self, base, use_cache = True, **kwargs):
+        GenericFile.extract(self, base, **kwargs)
 
         if use_cache and self.compress and self.from_ifs and self.format in cachable_formats:
             self.write_cache(GenericFile._load_from_ifs(self), base)
@@ -64,7 +64,7 @@ class ImageFile(GenericFile):
         im.save(b, format = 'PNG')
         return b.getvalue()
 
-    def repack(self, manifest, data_blob, tqdm_progress):
+    def repack(self, manifest, data_blob, tqdm_progress, **kwargs):
         if tqdm_progress:
             tqdm_progress.write(self.full_path)
             tqdm_progress.update(1)
@@ -111,7 +111,7 @@ class ImageFile(GenericFile):
                 return False
         return True
 
-    def preload(self, use_cache):
+    def preload(self, use_cache = True, tex_suffix = None, **kwargs):
         if not self.needs_preload and use_cache:
             return
         # Not cached/out of date, compressing

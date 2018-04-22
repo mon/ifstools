@@ -15,7 +15,7 @@ class GenericFile(Node):
         self.time = int(os.path.getmtime(self.disk_path))
         self.start = self.size = None
 
-    def extract(self, base, use_cache = True):
+    def extract(self, base, **kwargs):
         data = self.load()
         path = os.path.join(base, self.full_path)
         utils.save_with_timestamp(path, data, self.time)
@@ -43,10 +43,10 @@ class GenericFile(Node):
     def needs_preload(self):
         return False
 
-    def preload(self, use_cache):
+    def preload(self, **kwargs):
         pass
 
-    def repack(self, manifest, data_blob, tqdm_progress):
+    def repack(self, manifest, data_blob, tqdm_progress, **kwargs):
         if tqdm_progress:
             tqdm_progress.write(self.full_path)
             tqdm_progress.update(1)

@@ -78,14 +78,14 @@ class GenericFolder(Node):
         for f in self.files.values():
             f.tree_complete()
 
-    def repack(self, manifest, data_blob, tqdm_progress):
+    def repack(self, manifest, data_blob, tqdm_progress, **kwargs):
         if self.name:
             manifest = etree.SubElement(manifest, self.packed_name)
             manifest.attrib['__type'] = 's32'
             manifest.text = str(self.time)
 
         for name, entry in chain(self.folders.items(), self.files.items()):
-            entry.repack(manifest, data_blob, tqdm_progress)
+            entry.repack(manifest, data_blob, tqdm_progress, **kwargs)
 
     @property
     def all_files(self):

@@ -20,15 +20,13 @@ FILE_VERSION = 3
 
 # must be toplevel or can't be pickled
 def _extract(args):
-    f = args[0]
-    path = args[1]
-    f.extract(path)
+    f, path, kwargs = args
+    f.extract(path, **kwargs)
     return f.full_path
 
 def _load(args):
-    f = args[0]
-    use_cache = args[1]
-    f.preload(use_cache)
+    f, kwargs = args
+    f.preload(**kwargs)
     return f.full_path
 
 class FileBlob(object):
@@ -128,12 +126,14 @@ class IFS:
     def __str__(self):
         return str(self.tree)
 
-    def extract(self, progress = True, use_cache = True, recurse = True,
-                tex_only = False, extract_manifest = False, path = None):
+    def extract(self, progress = True, recurse = True, tex_only = False,
+            extract_manifest = False, path = None, **kwargs):
         if path is None:
             path = self.folder_out
-        if tex_only and 'tex' not in self.tree.folders:
-            return
+        if tex_only:
+            kwargs['use_cache'] = False
+            if 'tex' not in self.tree.folders:
+                return
         utils.mkdir_silent(path)
         utime(path, (self.time, self.time))
 
@@ -153,14 +153,14 @@ class IFS:
         for f in tqdm(self.tree.all_files):
             if tex_only and not isinstance(f, ImageFile):
                 continue
-            f.extract(path, use_cache)
+            f.extract(path, **kwargs)
             if progress:
                 tqdm.write(f.full_path)
             if recurse and f.name.endswith('.ifs'):
                 rpath = join(path, f.full_path)
                 i = IFS(rpath)
-                i.extract(progress=progress, use_cache=use_cache, recurse=recurse,
-                    tex_only=tex_only, extract_manifest=extract_manifest, path=rpath.replace('.ifs','_ifs'))
+                i.extract(progress=progress, recurse=recurse, tex_only=tex_only,
+                    extract_manifest=extract_manifest, path=rpath.replace('.ifs','_ifs'), **kwargs)
 
         ''' Todo: reimplement this since we're using file objects now
         '''
@@ -172,7 +172,7 @@ class IFS:
             if progress:
                 tqdm.write(f)'''
 
-    def repack(self, progress = True, use_cache = True, path = None):
+    def repack(self, progress = True, path = None, **kwargs):
         if path is None:
             path = self.ifs_out
         # open first in case path is bad
@@ -184,7 +184,7 @@ class IFS:
         manifest_info = etree.SubElement(self.manifest.xml_doc, '_info_')
 
         # the important bit
-        data = self._repack_tree(progress, use_cache)
+        data = self._repack_tree(progress, **kwargs)
 
         data_md5 = etree.SubElement(manifest_info, 'md5')
         data_md5.attrib['__type'] = 'bin'
@@ -220,7 +220,7 @@ class IFS:
 
         ifs_file.close()
 
-    def _repack_tree(self, progress = True, use_cache = True):
+    def _repack_tree(self, progress = True, **kwargs):
         folders = self.tree.all_folders
         files = self.tree.all_files
 
@@ -231,8 +231,8 @@ class IFS:
                 kbin_backup.append(folder.info_kbin)
                 folder.info_kbin = None
 
-        needs_preload = (f for f in files if f.needs_preload or not use_cache)
-        args = list(zip(needs_preload, itertools.cycle((use_cache,))))
+        needs_preload = (f for f in files if f.needs_preload or not kwargs['use_cache'])
+        args = list(zip(needs_preload, itertools.cycle((kwargs,))))
         p = Pool()
         for f in tqdm(p.imap_unordered(_load, args), desc='Caching', total=len(args), disable = not progress):
             if progress:
@@ -246,6 +246,6 @@ class IFS:
         tqdm_progress = None
         if progress:
             tqdm_progress = tqdm(desc='Writing', total=len(files))
-        self.tree.repack(self.manifest.xml_doc, self.data_blob, tqdm_progress)
+        self.tree.repack(self.manifest.xml_doc, self.data_blob, tqdm_progress, **kwargs)
 
         return self.data_blob.getvalue()
