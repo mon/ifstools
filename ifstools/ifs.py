@@ -11,7 +11,7 @@ from tqdm import tqdm
 from kbinxml import KBinXML
 from kbinxml.bytebuffer import ByteBuffer
 
-from .handlers import GenericFolder, MD5Folder, ImageFile
+from .handlers import GenericFolder, MD5Folder, ImageFile, ImageCanvas
 from . import utils
 
 SIGNATURE = 0x6CAD8F89
@@ -143,7 +143,14 @@ class IFS:
 
         # build the tree
         for folder in self.tree.all_folders:
-            if tex_only and folder.name != 'tex':
+            if tex_only and folder.name == 'tex':
+                self.tree = folder
+                # make it root to discourage repacking
+                folder.name = ''
+                for f in folder.all_files:
+                    f.path = ''
+                break
+            elif tex_only:
                 continue
             f_path = join(path, folder.full_path)
             utils.mkdir_silent(f_path)
@@ -151,7 +158,7 @@ class IFS:
 
         # extract the files
         for f in tqdm(self.tree.all_files):
-            if tex_only and not isinstance(f, ImageFile):
+            if tex_only and not isinstance(f, ImageFile) and not isinstance(f, ImageCanvas):
                 continue
             f.extract(path, **kwargs)
             if progress:

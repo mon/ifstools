@@ -41,7 +41,9 @@ def main():
     parser.add_argument('-y', action='store_true', help='don\'t prompt for file/folder overwrite', dest='overwrite')
     parser.add_argument('-o', default='.', help='output directory', dest='out_dir')
     parser.add_argument('--tex-only', action='store_true', help='only extract textures', dest='tex_only')
-    parser.add_argument('--nocache', action='store_false', help='ignore texture cache, recompress all', dest='use_cache')
+    parser.add_argument('-c', '--canvas', action='store_true', help='dump the image canvas as defined by the texturelist.xml in _canvas.png', dest='dump_canvas')
+    parser.add_argument('--bounds', action='store_true', help='draw image bounds on the exported canvas in red', dest='draw_bbox')
+    parser.add_argument('--no-cache', action='store_false', help='ignore texture cache, recompress all', dest='use_cache')
     parser.add_argument('-m', '--extract-manifest', action='store_true', help='extract the IFS manifest for inspection', dest='extract_manifest')
     parser.add_argument('-s', '--silent', action='store_false', dest='progress',
                        help='don\'t display files as they are processed')
