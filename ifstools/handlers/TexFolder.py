@@ -39,6 +39,7 @@ class ImageCanvas(GenericFile):
             This could be far speedier if it copied raw pixels, but that would
             take far too much time to write vs using Image inbuilts '''
         im = Image.new('RGBA', self.img_size)
+        draw = None
         if self.bbox:
             draw = ImageDraw.Draw(im)
 
