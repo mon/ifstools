@@ -20,10 +20,10 @@ Then run `ifstools` from anywhere in a command prompt.
 
 ## Usage
 ```
-usage: ifstools [-h] [-e] [-y] [-o OUT_DIR] [--tex-only] [--nocache] [-m] [-s]
-                [-r]
-                file_to_unpack.ifs|folder_to_repack_ifs
-                [file_to_unpack.ifs|folder_to_repack_ifs ...]
+usage: ifstools [-h] [-e] [-y] [-o OUT_DIR] [--tex-only] [-c]
+                       [--bounds] [--no-cache] [-m] [-s] [-r]
+                       file_to_unpack.ifs|folder_to_repack_ifs
+                       [file_to_unpack.ifs|folder_to_repack_ifs ...]
 
 Unpack/pack IFS files and textures
 
@@ -40,7 +40,10 @@ optional arguments:
   -y                    don't prompt for file/folder overwrite
   -o OUT_DIR            output directory
   --tex-only            only extract textures
-  --nocache             ignore texture cache, recompress all
+  -c, --canvas          dump the image canvas as defined by the
+                        texturelist.xml in _canvas.png
+  --bounds              draw image bounds on the exported canvas in red
+  --no-cache            ignore texture cache, recompress all
   -m, --extract-manifest
                         extract the IFS manifest for inspection
   -s, --silent          don't display files as they are processed
