@@ -22,7 +22,7 @@ FILE_VERSION = 3
 def _extract(args):
     f, path, kwargs = args
     f.extract(path, **kwargs)
-    return f.full_path
+    return f
 
 def _load(args):
     f, kwargs = args
@@ -169,15 +169,24 @@ class IFS:
                 i.extract(progress=progress, recurse=recurse, tex_only=tex_only,
                     extract_manifest=extract_manifest, path=rpath.replace('.ifs','_ifs'), **kwargs)
 
-        ''' Todo: reimplement this since we're using file objects now
-        '''
-        # extract the tree
-        '''p = Pool()
-        args = zip(self.tree.all_files, itertools.cycle((path,)))
 
+        # you can't pickle open files, so this won't work. Perhaps there is a way around it?
+        '''to_extract = (f for f in self.tree.all_files if not(tex_only and not isinstance(f, ImageFile) and not isinstance(f, ImageCanvas)))
+
+        p = Pool()
+        args = zip(to_extract, itertools.cycle((path,)), itertools.cycle((kwargs,)))
+
+        to_recurse = []
         for f in tqdm(p.imap_unordered(_extract, args)):
             if progress:
-                tqdm.write(f)'''
+                tqdm.write(f)
+            if recurse and f.name.endswith('.ifs'):
+                to_recurse.append(join(path, f.full_path))
+
+        for rpath in recurse:
+            i = IFS(rpath)
+            i.extract(progress=progress, recurse=recurse, tex_only=tex_only,
+                extract_manifest=extract_manifest, path=rpath.replace('.ifs','_ifs'), **kwargs)'''
 
     def repack(self, progress = True, path = None, **kwargs):
         if path is None:
