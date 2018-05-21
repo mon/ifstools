@@ -27,29 +27,27 @@ class ImageCanvas(GenericFile):
 
         self.images = images
         self.img_size = size
-        self.bbox = False
 
-    def extract(self, base, dump_canvas = False, draw_bbox = False, **kwargs):
-        self.bbox = draw_bbox
+    def extract(self, base, dump_canvas = False, **kwargs):
         if dump_canvas:
             GenericFile.extract(self, base, **kwargs)
 
-    def load(self, convert_kbin = False):
+    def load(self, draw_bbox = False, **kwargs):
         ''' Makes the canvas.
             This could be far speedier if it copied raw pixels, but that would
             take far too much time to write vs using Image inbuilts '''
         im = Image.new('RGBA', self.img_size)
         draw = None
-        if self.bbox:
+        if draw_bbox:
             draw = ImageDraw.Draw(im)
 
         for sprite in self.images:
             data = sprite.load()
             sprite_im = Image.open(BytesIO(data))
 
-            size = [x//2 for x in sprite.imgrect]
+            size = sprite.imgrect
             im.paste(sprite_im, (size[0], size[2]))
-            if self.bbox:
+            if draw_bbox:
                 draw.rectangle((size[0], size[2], size[1], size[3]), outline='red')
 
         del draw

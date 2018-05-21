@@ -16,24 +16,24 @@ class GenericFile(Node):
         self.start = self.size = None
 
     def extract(self, base, **kwargs):
-        data = self.load()
+        data = self.load(**kwargs)
         path = os.path.join(base, self.full_path)
         utils.save_with_timestamp(path, data, self.time)
 
-    def load(self, convert_kbin = True):
+    def load(self, **kwargs):
         if self.from_ifs:
-            return self._load_from_ifs(convert_kbin)
+            return self._load_from_ifs(**kwargs)
         else:
-            return self._load_from_filesystem()
+            return self._load_from_filesystem(**kwargs)
 
-    def _load_from_ifs(self, convert_kbin = True):
+    def _load_from_ifs(self, convert_kbin = True, **kwargs):
         data = self.ifs_data.get(self.start, self.size)
 
         if convert_kbin and self.name.endswith('.xml') and KBinXML.is_binary_xml(data):
             data = KBinXML(data).to_text().encode('utf8')
         return data
 
-    def _load_from_filesystem(self):
+    def _load_from_filesystem(self, **kwargs):
         with open(self.disk_path, 'rb') as f:
             ret = f.read()
         self.size = len(ret)

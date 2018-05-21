@@ -21,7 +21,7 @@ Then run `ifstools` from anywhere in a command prompt.
 ## Usage
 ```
 usage: ifstools [-h] [-e] [-y] [-o OUT_DIR] [--tex-only] [-c]
-                       [--bounds] [--no-cache] [-m] [-s] [-r]
+                       [--bounds] [--uv] [--no-cache] [-m] [-s] [-r]
                        file_to_unpack.ifs|folder_to_repack_ifs
                        [file_to_unpack.ifs|folder_to_repack_ifs ...]
 
@@ -43,6 +43,8 @@ optional arguments:
   -c, --canvas          dump the image canvas as defined by the
                         texturelist.xml in _canvas.png
   --bounds              draw image bounds on the exported canvas in red
+  --uv                  crop images to uvrect (usually 1px smaller than
+                        imgrect). Forces --tex-only
   --no-cache            ignore texture cache, recompress all
   -m, --extract-manifest
                         extract the IFS manifest for inspection

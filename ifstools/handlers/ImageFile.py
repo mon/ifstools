@@ -25,21 +25,26 @@ class ImageFile(GenericFile):
         self.format = fmt
         self.compress = compress
 
-        self.uvrect = self._split_ints(image_elem.find('uvrect').text)
-        self.imgrect = self._split_ints(image_elem.find('imgrect').text)
+        # all values are multiplied by 2, odd values have never been seen
+        self.uvrect =  [x//2 for x in self._split_ints(image_elem.find('uvrect').text)]
+        self.imgrect = [x//2 for x in self._split_ints(image_elem.find('imgrect').text)]
         self.img_size = (
-            (self.imgrect[1]-self.imgrect[0])//2,
-            (self.imgrect[3]-self.imgrect[2])//2
+            self.imgrect[1]-self.imgrect[0],
+            self.imgrect[3]-self.imgrect[2]
+        )
+        self.uv_size = (
+            self.uvrect[1]-self.uvrect[0],
+            self.uvrect[3]-self.uvrect[2]
         )
 
     def extract(self, base, use_cache = True, **kwargs):
         GenericFile.extract(self, base, **kwargs)
 
         if use_cache and self.compress and self.from_ifs and self.format in cachable_formats:
-            self.write_cache(GenericFile._load_from_ifs(self), base)
+            self.write_cache(GenericFile._load_from_ifs(self, **kwargs), base)
 
-    def _load_from_ifs(self, convert_kbin = False):
-        data = GenericFile._load_from_ifs(self, False)
+    def _load_from_ifs(self, crop_to_uvrect = False, **kwargs):
+        data = GenericFile._load_from_ifs(self, **kwargs)
 
         if self.compress == 'avslz':
             uncompressed_size = unpack('>I', data[:4])[0]
@@ -59,6 +64,17 @@ class ImageFile(GenericFile):
             im = decoder(self, data)
         else:
             raise NotImplementedError('Unknown format {}'.format(self.format))
+
+        if crop_to_uvrect:
+            start_x = self.uvrect[0] - self.imgrect[0]
+            start_y = self.uvrect[2] - self.imgrect[2]
+            dims = (
+                start_x,
+                start_y,
+                start_x + self.uv_size[0],
+                start_y + self.uv_size[1],
+            )
+            im = im.crop(dims)
 
         b = BytesIO()
         im.save(b, format = 'PNG')

@@ -43,6 +43,7 @@ def main():
     parser.add_argument('--tex-only', action='store_true', help='only extract textures', dest='tex_only')
     parser.add_argument('-c', '--canvas', action='store_true', help='dump the image canvas as defined by the texturelist.xml in _canvas.png', dest='dump_canvas')
     parser.add_argument('--bounds', action='store_true', help='draw image bounds on the exported canvas in red', dest='draw_bbox')
+    parser.add_argument('--uv', action='store_true', help='crop images to uvrect (usually 1px smaller than imgrect). Forces --tex-only', dest='crop_to_uvrect')
     parser.add_argument('--no-cache', action='store_false', help='ignore texture cache, recompress all', dest='use_cache')
     parser.add_argument('-m', '--extract-manifest', action='store_true', help='extract the IFS manifest for inspection', dest='extract_manifest')
     parser.add_argument('-s', '--silent', action='store_false', dest='progress',
@@ -51,6 +52,9 @@ def main():
                        help='if file contains another IFS, don\'t extract its contents')
 
     args = parser.parse_args()
+
+    if args.crop_to_uvrect:
+        args.tex_only = True
 
     if args.extract_folders:
         dirs = [f for f in args.files if os.path.isdir(f)]
