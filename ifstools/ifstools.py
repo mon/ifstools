@@ -1,6 +1,7 @@
 import argparse
 import os
 import multiprocessing # for pyinstaller fixes
+from sys import exit # exe freeze
 try:
     # py 2
     input = raw_input

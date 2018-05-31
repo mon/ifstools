@@ -2,4 +2,4 @@ lxml
 tqdm
 pillow
 future
-kbinxml>=1.2
+kbinxml>=1.5

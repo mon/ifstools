@@ -8,8 +8,8 @@ from . import MD5Folder, ImageFile, GenericFile
 from .ImageDecoders import cachable_formats
 
 class TextureList(GenericFile):
-    def _load_from_filesystem(self):
-        raw = GenericFile._load_from_filesystem(self)
+    def _load_from_filesystem(self, **kwargs):
+        raw = GenericFile._load_from_filesystem(self, **kwargs)
         k = KBinXML(raw)
         # fallback to a type we can encode
         for tex in k.xml_doc.iterchildren():

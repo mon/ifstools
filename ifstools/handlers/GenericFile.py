@@ -52,7 +52,7 @@ class GenericFile(Node):
             tqdm_progress.update(1)
         elem = etree.SubElement(manifest, self.packed_name)
         elem.attrib['__type'] = '3s32'
-        data = self.load(convert_kbin = False)
+        data = self.load(convert_kbin = False, **kwargs)
         if self.name.endswith('.xml') and not KBinXML.is_binary_xml(data):
             data = KBinXML(data).to_binary()
         # offset, size, timestamp
