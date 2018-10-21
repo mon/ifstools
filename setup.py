@@ -11,7 +11,7 @@ requires = [
 if sys.version_info < (3,0):
     requires.append('future')
 
-version = '1.6'
+version = '1.7'
 setup(
     name='ifstools',
     description='Extractor/repacker for Konmai IFS files',
