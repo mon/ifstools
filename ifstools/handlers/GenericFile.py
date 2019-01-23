@@ -8,7 +8,13 @@ from .. import utils
 
 class GenericFile(Node):
     def from_xml(self, element):
-        self.start, self.size, self.time = self._split_ints(element.text)
+        info = self._split_ints(element.text)
+        # sometimes we don't get a timestamp
+        if len(info) == 2:
+            self.start, self.size = info
+            self.time = -1
+        else:
+            self.start, self.size, self.time = info
 
     def from_filesystem(self, folder):
         self.base_path = self.parent.base_path
