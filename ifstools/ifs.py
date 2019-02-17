@@ -132,8 +132,6 @@ class IFS:
             path = self.folder_out
         if tex_only:
             kwargs['use_cache'] = False
-            if 'tex' not in self.tree.folders:
-                return
         utils.mkdir_silent(path)
         utime(path, (self.time, self.time))
 
@@ -158,7 +156,8 @@ class IFS:
 
         # extract the files
         for f in tqdm(self.tree.all_files):
-            if tex_only and not isinstance(f, ImageFile) and not isinstance(f, ImageCanvas):
+            # allow recurse + tex_only to extract ifs files
+            if tex_only and not isinstance(f, ImageFile) and not isinstance(f, ImageCanvas) and not (recurse and f.name.endswith('.ifs')):
                 continue
             f.extract(path, **kwargs)
             if progress:
