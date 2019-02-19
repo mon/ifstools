@@ -155,7 +155,7 @@ class IFS:
             utime(f_path, (self.time, self.time))
 
         # extract the files
-        for f in tqdm(self.tree.all_files):
+        for f in tqdm(self.tree.all_files, disable = not progress):
             # allow recurse + tex_only to extract ifs files
             if tex_only and not isinstance(f, ImageFile) and not isinstance(f, ImageCanvas) and not (recurse and f.name.endswith('.ifs')):
                 continue
