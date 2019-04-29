@@ -253,6 +253,9 @@ class IFS:
             if progress:
                 tqdm.write(f)
 
+        p.close()
+        p.terminate()
+
         # restore stuff from before
         for folder in folders:
             if isinstance(folder, MD5Folder):
