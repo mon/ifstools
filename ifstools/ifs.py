@@ -83,6 +83,7 @@ class IFS:
 
     def load_dir(self, path):
         self.is_file = False
+        self.file = None
 
         path = path.rstrip('/\\')
         self.folder_out = basename(path)
