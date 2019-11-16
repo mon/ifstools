@@ -1,5 +1,5 @@
 from itertools import chain
-from os.path import getmtime, basename, dirname, join, realpath
+from os.path import getmtime, basename, dirname, join, realpath, isfile
 from collections import OrderedDict
 
 import lxml.etree as etree
@@ -37,7 +37,11 @@ class GenericFolder(Node):
             if filename == '_info_': # metadata
                 continue
             elif filename == '_super_': # sub-reference
-                self.supers.append(IFS(join(my_path, child.text)).data_blob)
+                super_file = join(my_path, child.text)
+                if not isfile(super_file):
+                    raise IOError('IFS references super-IFS {} but it does not exist'.format(child.text))
+
+                self.supers.append(IFS(super_file))
             # folder: has children or timestamp only, and isn't a reference
             elif (list(child) or len(child.text.split(' ')) == 1) and child[0].tag != 'i':
                 handler = self.folder_handlers.get(filename, GenericFolder)
@@ -49,7 +53,15 @@ class GenericFolder(Node):
                     super_ref = int(child[0].text)
                     if super_ref > len(self.supers):
                         raise IOError('IFS references super-IFS {} but we only have {}'.format(super_ref, len(self.supers)))
-                    self.files[filename].ifs_data = self.supers[super_ref - 1]
+
+                    super_ifs = self.supers[super_ref - 1]
+                    super_files = super_ifs.tree.all_files
+                    try:
+                        super_file = next(x for x in super_files if x.name == filename)
+                    except StopIteration:
+                        raise IOError('IFS references super-IFS entry {} in {} but it does not exist'.format(filename, super_ifs.ifs_out))
+
+                    self.files[filename] = super_file
 
         if not self.full_path: # root
             self.tree_complete()
