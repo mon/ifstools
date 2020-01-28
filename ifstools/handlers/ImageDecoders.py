@@ -6,14 +6,17 @@ from tqdm import tqdm
 
 # header for a standard DDS with DXT5 compression and RGBA pixels
 # gap placed for image height/width insertion
-dxt5_start = b'DDS |\x00\x00\x00\x07\x10\x00\x00'
-dxt5_end = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
-           b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
-           b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
-           b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00 \x00\x00\x00\x04' + \
-           b'\x00\x00\x00DXT5\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
-           b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00' + \
-           b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+dxt_start =  b'DDS |\x00\x00\x00\x07\x10\x00\x00'
+
+dxt_middle = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
+             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
+             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
+             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00 \x00\x00\x00\x04' + \
+             b'\x00\x00\x00'
+
+dxt_end =    b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
+             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00' + \
+             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 
 def check_size(ifs_img, data, bytes_per_pixel):
     need = ifs_img.img_size[0] * ifs_img.img_size[1] * bytes_per_pixel
@@ -36,11 +39,13 @@ def decode_argb4444(ifs_img, data):
     r, g, b, a = im.split()
     return Image.merge('RGBA', (b, g, r, a))
 
-def decode_dxt5(ifs_img, data):
+def decode_dxt(ifs_img, data, version):
     b = BytesIO()
-    b.write(dxt5_start)
+    b.write(dxt_start)
     b.write(pack('<2I', ifs_img.img_size[1], ifs_img.img_size[0]))
-    b.write(dxt5_end)
+    b.write(dxt_middle)
+    b.write(version)
+    b.write(dxt_end)
     # the data has swapped endianness for every WORD
     l = len(data)//2
     big = unpack('>{}H'.format(l), data)
@@ -48,11 +53,18 @@ def decode_dxt5(ifs_img, data):
     b.write(little)
     return Image.open(b)
 
+def decode_dxt5(ifs_img, data):
+    return decode_dxt(ifs_img, data, b'DXT5')
+
+def decode_dxt1(ifs_img, data):
+    return decode_dxt(ifs_img, data, b'DXT1')
+
 
 image_formats = {
     'argb8888rev' : {'decoder': decode_argb8888rev, 'encoder': encode_argb8888rev},
     'argb4444'    : {'decoder': decode_argb4444, 'encoder': None},
-    'dxt5'        : {'decoder': decode_dxt5, 'encoder': None}
+    'dxt1'        : {'decoder': decode_dxt1, 'encoder': None},
+    'dxt5'        : {'decoder': decode_dxt5, 'encoder': None},
 }
 
 cachable_formats = [key for key, val in image_formats.items() if val['encoder'] is not None]
