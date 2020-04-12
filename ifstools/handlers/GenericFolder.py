@@ -57,7 +57,10 @@ class GenericFolder(Node):
                     super_ifs = self.supers[super_ref - 1]
                     super_files = super_ifs.tree.all_files
                     try:
-                        super_file = next(x for x in super_files if x.name == filename)
+                        super_file = next(x for x in super_files if (
+                            # seen in Sunny Park files: references to MD5 name instead of base
+                            x.name == filename or x.packed_name == Node.sanitize_name(filename)
+                        ))
                     except StopIteration:
                         raise IOError('IFS references super-IFS entry {} in {} but it does not exist'.format(filename, super_ifs.ifs_out))
 
