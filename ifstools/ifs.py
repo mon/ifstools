@@ -1,3 +1,4 @@
+from collections import defaultdict
 from multiprocessing import Pool
 from os.path import basename, dirname, splitext, join, isdir, isfile, getmtime
 from os import utime, walk
@@ -128,7 +129,7 @@ class IFS:
         return str(self.tree)
 
     def extract(self, progress = True, recurse = True, tex_only = False,
-            extract_manifest = False, path = None, **kwargs):
+            extract_manifest = False, path = None, rename_dupes = False, **kwargs):
         if path is None:
             path = self.folder_out
         if tex_only:
@@ -155,6 +156,27 @@ class IFS:
             utils.mkdir_silent(f_path)
             utime(f_path, (self.time, self.time))
 
+            # handle different-case-but-same-name for Windows
+            same_name = defaultdict(list)
+            for name, obj in folder.files.items():
+                same_name[name.lower()].append(obj)
+
+            for files in same_name.values():
+                # common base case of "sane ifs file"
+                if len(files) == 1:
+                    continue
+
+                # make them 'a (1)', 'a (2)' etc
+                if rename_dupes:
+                    for i, f in enumerate(files[1:]):
+                        base, ext = splitext(f.name)
+                        f.name = base + ' ({})'.format(i+1) + ext
+                elif progress: # warn if not silenced
+                    all_names = ', '.join([f.name for f in files])
+                    tqdm.write('WARNING: Files with same name and differing case will overwrite on Windows ({}). '.format(all_names) +
+                               'Use --rename-dupes to extract without loss')
+                # else just do nothing
+
         # extract the files
         for f in tqdm(self.tree.all_files, disable = not progress):
             # allow recurse + tex_only to extract ifs files
@@ -167,7 +189,8 @@ class IFS:
                 rpath = join(path, f.full_path)
                 i = IFS(rpath)
                 i.extract(progress=progress, recurse=recurse, tex_only=tex_only,
-                    extract_manifest=extract_manifest, path=rpath.replace('.ifs','_ifs'), **kwargs)
+                    extract_manifest=extract_manifest, path=rpath.replace('.ifs','_ifs'),
+                    rename_dupes=rename_dupes, **kwargs)
 
 
         # you can't pickle open files, so this won't work. Perhaps there is a way around it?

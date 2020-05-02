@@ -46,6 +46,8 @@ def main():
     parser.add_argument('--bounds', action='store_true', help='draw image bounds on the exported canvas in red', dest='draw_bbox')
     parser.add_argument('--uv', action='store_true', help='crop images to uvrect (usually 1px smaller than imgrect). Forces --tex-only', dest='crop_to_uvrect')
     parser.add_argument('--no-cache', action='store_false', help='ignore texture cache, recompress all', dest='use_cache')
+    parser.add_argument('--rename-dupes', action='store_true', dest='rename_dupes',
+                       help='if two files have the same name but differing case (A.png vs a.png) rename the second as "a (1).png" to allow both to be extracted on Windows')
     parser.add_argument('-m', '--extract-manifest', action='store_true', help='extract the IFS manifest for inspection', dest='extract_manifest')
     parser.add_argument('-s', '--silent', action='store_false', dest='progress',
                        help='don\'t display files as they are processed')
