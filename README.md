@@ -46,8 +46,17 @@ optional arguments:
   --uv                  crop images to uvrect (usually 1px smaller than
                         imgrect). Forces --tex-only
   --no-cache            ignore texture cache, recompress all
+  --rename-dupes        if two files have the same name but differing case
+                        (A.png vs a.png) rename the second as "a (1).png" to
+                        allow both to be extracted on Windows
   -m, --extract-manifest
                         extract the IFS manifest for inspection
+  --super-disable       only extract files unique to this IFS, do not follow
+                        "super" parent references at all
+  --super-skip-bad      if a "super" IFS reference has a checksum mismatch, do
+                        not extract it
+  --super-abort-if-bad  if a "super" IFS reference has a checksum mismatch,
+                        cancel and display an error
   -s, --silent          don't display files as they are processed
   -r, --norecurse       if file contains another IFS, don't extract its
                         contents
