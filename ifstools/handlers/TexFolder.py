@@ -60,8 +60,10 @@ class ImageCanvas(GenericFile):
         return
 
 class TexFolder(MD5Folder):
-    def __init__(self, ifs_data, obj, parent = None, path = '', name = '', supers = None):
-        MD5Folder.__init__(self, ifs_data, obj, parent, path, name, supers, 'image', '.png')
+    def __init__(self, ifs_data, obj, parent = None, path = '', name = '', supers = None,
+            super_disable = False, super_skip_bad = False, super_abort_if_bad = False):
+        MD5Folder.__init__(self, ifs_data, obj, parent, path, name, supers,
+            super_disable, super_skip_bad, super_abort_if_bad, 'image', '.png')
 
     def tree_complete(self):
         MD5Folder.tree_complete(self)

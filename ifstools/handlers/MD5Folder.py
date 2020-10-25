@@ -6,8 +6,11 @@ from . import GenericFolder
 
 class MD5Folder(GenericFolder):
 
-    def __init__(self, ifs_data, parent, obj, path = '', name = '', supers = None, md5_tag = None, extension = None):
-        GenericFolder.__init__(self, ifs_data, parent, obj, path, name, supers)
+    def __init__(self, ifs_data, parent, obj, path = '', name = '', supers = None,
+            super_disable = False, super_skip_bad = False,
+            super_abort_if_bad = False, md5_tag = None, extension = None):
+        GenericFolder.__init__(self, ifs_data, parent, obj, path, name, supers,
+            super_disable, super_skip_bad, super_abort_if_bad)
         self.md5_tag = md5_tag if md5_tag else self.name
         self.extension = extension
 

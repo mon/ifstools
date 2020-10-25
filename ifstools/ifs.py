@@ -41,15 +41,17 @@ class FileBlob(object):
         return self.file.read(size)
 
 class IFS:
-    def __init__(self, path):
+    def __init__(self, path, super_disable = False, super_skip_bad = False,
+            super_abort_if_bad = False):
         if isfile(path):
-            self.load_ifs(path)
+            self.load_ifs(path, super_disable, super_skip_bad, super_abort_if_bad)
         elif isdir(path):
             self.load_dir(path)
         else:
             raise IOError('Input path {} does not exist'.format(path))
 
-    def load_ifs(self, path):
+    def load_ifs(self, path, super_disable = False, super_skip_bad = False,
+            super_abort_if_bad = False):
         self.is_file = True
 
         name = basename(path)
@@ -71,13 +73,16 @@ class IFS:
         manifest_end = header.get_u32()
         self.data_blob = FileBlob(self.file, manifest_end)
 
+        self.manifest_md5 = None
         if self.file_version > 1:
-            # md5 of manifest, unchecked
-            header.offset += 16
+            self.manifest_md5 = header.get_bytes(16)
 
         self.file.seek(header.offset)
         self.manifest = KBinXML(self.file.read(manifest_end-header.offset))
-        self.tree = GenericFolder(self.data_blob, self.manifest.xml_doc)
+        self.tree = GenericFolder(self.data_blob, self.manifest.xml_doc,
+            super_disable=super_disable, super_skip_bad=super_skip_bad,
+            super_abort_if_bad=super_abort_if_bad
+        )
 
         # IFS files repacked with other tools usually have wrong values - don't validate this
         #assert ifs_tree_size == self.manifest.mem_size

@@ -3,13 +3,16 @@ from os.path import getmtime, basename, dirname, join, realpath, isfile
 from collections import OrderedDict
 
 import lxml.etree as etree
+from tqdm import tqdm
 
 from . import GenericFile
 from .Node import Node
 
 class GenericFolder(Node):
 
-    def __init__(self, ifs_data, obj, parent = None, path = '', name = '', supers = None):
+    def __init__(self, ifs_data, obj, parent = None, path = '', name = '',
+            supers = None, super_disable = False, super_skip_bad = False,
+            super_abort_if_bad = False):
         # circular dependencies mean we import here
         from . import AfpFolder, TexFolder
         self.folder_handlers = {
@@ -17,6 +20,9 @@ class GenericFolder(Node):
             'tex' : TexFolder,
         }
         self.supers = supers if supers else []
+        self.super_disable = super_disable
+        self.super_skip_bad = super_skip_bad
+        self.super_abort_if_bad = super_abort_if_bad
         Node.__init__(self, ifs_data, obj, parent, path, name)
 
     file_handler = GenericFile
@@ -37,24 +43,51 @@ class GenericFolder(Node):
             if filename == '_info_': # metadata
                 continue
             elif filename == '_super_': # sub-reference
+                if self.super_disable:
+                    continue
+
                 super_file = join(my_path, child.text)
                 if not isfile(super_file):
-                    raise IOError('IFS references super-IFS {} but it does not exist'.format(child.text))
+                    raise IOError('IFS references super-IFS {} but it does not exist. Use --super-disable to ignore.'.format(child.text))
 
-                self.supers.append(IFS(super_file))
+                md5_expected = None
+                if list(child) and child[0].tag == 'md5':
+                    md5_expected = bytearray.fromhex(child[0].text)
+
+                super_ifs = IFS(super_file, super_skip_bad=self.super_skip_bad,
+                    super_abort_if_bad=self.super_abort_if_bad)
+                super_ifs.md5_good = (super_ifs.manifest_md5 == md5_expected) # add our own sentinel
+                if not super_ifs.md5_good:
+                    super_msg = 'IFS references super-IFS {} with MD5 {} but the actual MD5 is {}. One IFS may be corrupt.'.format(
+                        child.text, md5_expected.hex(), super_ifs.manifest_md5.hex()
+                    )
+                    if self.super_abort_if_bad:
+                        raise IOError(super_msg + ' Aborting.')
+                    elif self.super_skip_bad:
+                        tqdm.write('WARNING: {} Skipping all files it contains.'.format(super_msg))
+                    else:
+                        tqdm.write('WARNING: {}'.format(super_msg))
+
+                self.supers.append(super_ifs)
             # folder: has children or timestamp only, and isn't a reference
             elif (list(child) or len(child.text.split(' ')) == 1) and child[0].tag != 'i':
                 handler = self.folder_handlers.get(filename, GenericFolder)
-                self.folders[filename] = handler(self.ifs_data, child, self, self.full_path, filename, self.supers)
+                self.folders[filename] = handler(self.ifs_data, child, self, self.full_path, filename, self.supers,
+                    self.super_disable, self.super_skip_bad, self.super_abort_if_bad)
             else: # file
-                self.files[filename] = self.file_handler(self.ifs_data, child, self, self.full_path, filename)
                 if list(child) and child[0].tag == 'i':
+                    if self.super_disable:
+                        continue
+
                     # backref
                     super_ref = int(child[0].text)
                     if super_ref > len(self.supers):
                         raise IOError('IFS references super-IFS {} but we only have {}'.format(super_ref, len(self.supers)))
 
                     super_ifs = self.supers[super_ref - 1]
+                    if not super_ifs.md5_good and self.super_skip_bad:
+                        continue
+
                     super_files = super_ifs.tree.all_files
                     try:
                         super_file = next(x for x in super_files if (
@@ -65,6 +98,8 @@ class GenericFolder(Node):
                         raise IOError('IFS references super-IFS entry {} in {} but it does not exist'.format(filename, super_ifs.ifs_out))
 
                     self.files[filename] = super_file
+                else:
+                    self.files[filename] = self.file_handler(self.ifs_data, child, self, self.full_path, filename)
 
         if not self.full_path: # root
             self.tree_complete()
