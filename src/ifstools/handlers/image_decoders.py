@@ -5,6 +5,25 @@ from struct import pack
 from PIL import Image
 from tqdm import tqdm
 
+try:
+    from . import _native
+except ImportError:
+    _native = None
+
+# PIL modes we can pass through directly; anything else is converted to RGBA.
+_PNG_DIRECT_MODES = {'RGBA', 'RGB', 'LA', 'L'}
+
+def encode_png(im):
+    '''Encode a PIL Image as PNG bytes via the Rust png crate when available,
+    falling back to PIL's encoder otherwise.'''
+    if _native is None:
+        b = BytesIO()
+        im.save(b, format='PNG')
+        return b.getvalue()
+    if im.mode not in _PNG_DIRECT_MODES:
+        im = im.convert('RGBA')
+    return _native.encode_png(im.width, im.height, im.tobytes(), im.mode.lower())
+
 # header for a standard DDS with DXT5 compression and RGBA pixels
 # gap placed for image height/width insertion
 dxt_start =  b'DDS |\x00\x00\x00\x07\x10\x00\x00'

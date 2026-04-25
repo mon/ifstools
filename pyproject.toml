@@ -26,5 +26,5 @@ ifstools = "ifstools:main"
 
 [tool.maturin]
 python-source = "src"
-module-name = "ifstools.handlers._lz77_native"
+module-name = "ifstools.handlers._native"
 features = ["pyo3/extension-module"]

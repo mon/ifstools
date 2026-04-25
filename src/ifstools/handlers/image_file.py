@@ -16,7 +16,7 @@ from tqdm import tqdm
 from .. import utils
 from . import lz77
 from .generic_file import GenericFile
-from .image_decoders import cachable_formats, image_formats
+from .image_decoders import cachable_formats, encode_png, image_formats
 
 
 class ImageFile(GenericFile):
@@ -82,12 +82,10 @@ class ImageFile(GenericFile):
             )
             im = im.crop(dims)
 
-        b = BytesIO()
         if raw_pixels:
             return (im.width, im.height), im.tobytes()
         else:
-            im.save(b, format = 'PNG')
-            return b.getvalue()
+            return encode_png(im)
 
     def repack(self, manifest, data_blob, tqdm_progress, **kwargs):
         if tqdm_progress:

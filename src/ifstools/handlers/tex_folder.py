@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw
 from tqdm import tqdm
 
 from .generic_file import GenericFile
-from .image_decoders import cachable_formats
+from .image_decoders import cachable_formats, encode_png
 from .image_file import ImageFile
 from .md5_folder import MD5Folder
 
@@ -54,9 +54,7 @@ class ImageCanvas(GenericFile):
                 draw.rectangle((size[0], size[2], size[1], size[3]), outline='red')
 
         del draw
-        b = BytesIO()
-        im.save(b, format = 'PNG')
-        return b.getvalue()
+        return encode_png(im)
 
     # since it's basically metadata, we ignore similarly to _cache
     def repack(self, manifest, data_blob, tqdm_progress, **kwargs):
