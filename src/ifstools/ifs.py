@@ -131,8 +131,6 @@ class IFS:
             extract_manifest = False, path = None, rename_dupes = False, **kwargs):
         if path is None:
             path = self.folder_out
-        if tex_only:
-            kwargs['use_cache'] = False
         utils.mkdir_silent(path)
         utime(path, (self.time, self.time))
 
@@ -254,12 +252,14 @@ class IFS:
 
     def _repack_tree(self, progress = True, **kwargs):
         files = self.tree.all_files
-        needs_preload = [f for f in files if f.needs_preload or not kwargs['use_cache']]
+        to_compress = [f for f in files if isinstance(f, ImageFile)]
 
-        # LZ77 compress and PIL decode both release the GIL, so threads scale.
+        # PNG decode (PIL) and LZ77 compress (Rust) both release the GIL, so
+        # threads scale. The actual write loop is serial; this stages each
+        # file's packed bytes in memory.
         with ThreadPoolExecutor() as ex:
-            futures = {ex.submit(f.preload, **kwargs): f for f in needs_preload}
-            with tqdm(total=len(needs_preload), desc='Caching', disable=not progress) as bar:
+            futures = {ex.submit(f.preload, **kwargs): f for f in to_compress}
+            with tqdm(total=len(to_compress), desc='Compressing', disable=not progress) as bar:
                 for fut in as_completed(futures):
                     fut.result()
                     f = futures[fut]

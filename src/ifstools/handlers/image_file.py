@@ -1,22 +1,12 @@
-import errno
-import functools
-import time
-import timeit
 from io import BytesIO
-from os import mkdir, utime
-from os.path import dirname, getmtime, isfile, join
 from struct import pack, unpack
-from typing import cast
 
 import lxml.etree as etree
-from kbinxml import KBinXML
 from PIL import Image
-from tqdm import tqdm
 
-from .. import utils
 from . import lz77
 from .generic_file import GenericFile
-from .image_decoders import cachable_formats, encode_png, image_formats
+from .image_decoders import encode_png, image_formats
 
 
 class ImageFile(GenericFile):
@@ -42,12 +32,6 @@ class ImageFile(GenericFile):
             self.uvrect[1]-self.uvrect[0],
             self.uvrect[3]-self.uvrect[2]
         )
-
-    def extract(self, base, use_cache = True, **kwargs):
-        GenericFile.extract(self, base, **kwargs)
-
-        if use_cache and self.compress and self.from_ifs and self.format in cachable_formats:
-            self.write_cache(GenericFile._load_from_ifs(self, **kwargs), base)
 
     def _load_from_ifs(self, crop_to_uvrect = False, raw_pixels = False, **kwargs):
         data = GenericFile._load_from_ifs(self, **kwargs)
@@ -87,15 +71,26 @@ class ImageFile(GenericFile):
         else:
             return encode_png(im)
 
+    def _build_packed(self):
+        data = self._load_im()
+        if self.compress == 'avslz':
+            uncompressed_size = len(data)
+            compressed = lz77.compress(data)
+            data = pack('>I', uncompressed_size) + pack('>I', len(compressed)) + compressed
+        return data
+
+    def preload(self, **kwargs):
+        # Compress in parallel; the actual write loop in repack() runs serially.
+        self._packed = self._build_packed()
+
     def repack(self, manifest, data_blob, tqdm_progress, **kwargs):
         if tqdm_progress:
             tqdm_progress.write(self.full_path)
             tqdm_progress.update(1)
 
-        if self.compress == 'avslz':
-            data = self.read_cache()
-        else:
-            data = self._load_im()
+        data = getattr(self, '_packed', None)
+        if data is None:
+            data = self._build_packed()
 
         # offset, size, timestamp
         elem = etree.SubElement(manifest, self.packed_name)
@@ -106,6 +101,8 @@ class ImageFile(GenericFile):
         align = len(data) % 16
         if align:
             data_blob.write(b'\0' * (16-align))
+
+        self._packed = None
 
     def _load_im(self):
         data = self.load()
@@ -124,38 +121,3 @@ class ImageFile(GenericFile):
             raise NotImplementedError('Unknown format {}'.format(self.format))
 
         return data
-
-    @property
-    def needs_preload(self):
-        cache = join(dirname(self.disk_path), '_cache', self._packed_name)
-        if isfile(cache):
-            mtime = int(getmtime(cache))
-            if self.time <= mtime:
-                return False
-        return True
-
-    def preload(self, use_cache = True, tex_suffix = None, **kwargs):
-        if not self.needs_preload and use_cache:
-            return
-        # Not cached/out of date, compressing
-        data = self._load_im()
-        uncompressed_size = len(data)
-        data = lz77.compress(data)
-        compressed_size = len(data)
-        data = pack('>I', uncompressed_size) + pack('>I', compressed_size) + data
-        self.write_cache(data)
-
-    def write_cache(self, data, base = None):
-        if not self.from_ifs:
-            base = self.base_path
-        cache = join(base, self.path, '_cache', self._packed_name)
-        utils.mkdir_silent(dirname(cache))
-        with open(cache, 'wb') as f:
-            f.write(data)
-        utime(cache, (self.time, self.time))
-
-    def read_cache(self):
-        cache = join(dirname(self.disk_path), '_cache', self._packed_name)
-        with open(cache, 'rb') as f:
-            return f.read()
-

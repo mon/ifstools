@@ -37,7 +37,8 @@ def main():
     parser.add_argument('-c', '--canvas', action='store_true', help='dump the image canvas as defined by the texturelist.xml in _canvas.png', dest='dump_canvas')
     parser.add_argument('--bounds', action='store_true', help='draw image bounds on the exported canvas in red', dest='draw_bbox')
     parser.add_argument('--uv', action='store_true', help='crop images to uvrect (usually 1px smaller than imgrect). Forces --tex-only', dest='crop_to_uvrect')
-    parser.add_argument('--no-cache', action='store_false', help='ignore texture cache, recompress all', dest='use_cache')
+    parser.add_argument('--no-cache', action='store_true', dest='no_cache_deprecated',
+                       help=argparse.SUPPRESS)
     parser.add_argument('--rename-dupes', action='store_true',
                        help='if two files have the same name but differing case (A.png vs a.png) rename the second as "a (1).png" to allow both to be extracted on Windows')
     parser.add_argument('-m', '--extract-manifest', action='store_true', help='extract the IFS manifest for inspection', dest='extract_manifest')
@@ -53,6 +54,10 @@ def main():
                        help='if file contains another IFS, don\'t extract its contents')
 
     args = parser.parse_args()
+
+    if args.no_cache_deprecated:
+        print("WARNING: --no-cache is deprecated and has no effect; the texture cache has been removed.")
+    delattr(args, 'no_cache_deprecated')
 
     if args.crop_to_uvrect:
         args.tex_only = True

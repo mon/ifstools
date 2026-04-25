@@ -46,13 +46,6 @@ class GenericFile(Node):
         self.size = len(ret)
         return ret
 
-    @property
-    def needs_preload(self):
-        return False
-
-    def preload(self, **kwargs):
-        pass
-
     def repack(self, manifest, data_blob, tqdm_progress, **kwargs):
         if tqdm_progress:
             tqdm_progress.write(self.full_path)
