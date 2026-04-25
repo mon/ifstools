@@ -181,7 +181,10 @@ class IFS:
 
         # extract the files in parallel — the LZ77 native extension and PIL's
         # PNG codec both release the GIL, so threads scale across cores.
-        with ThreadPoolExecutor() as ex:
+        # Manage the executor manually so KeyboardInterrupt cancels pending
+        # work instead of waiting for the whole queue to drain.
+        ex = ThreadPoolExecutor()
+        try:
             futures = {ex.submit(f.extract, path, **kwargs): f for f in to_extract}
             with tqdm(total=len(to_extract), disable=not progress) as bar:
                 for fut in as_completed(futures):
@@ -190,6 +193,8 @@ class IFS:
                     if progress:
                         tqdm.write(f.full_path)
                     bar.update(1)
+        finally:
+            ex.shutdown(wait=False, cancel_futures=True)
 
         # nested IFS extraction is sequential: each child opens its own thread
         # pool so we'd otherwise oversubscribe.
@@ -256,8 +261,11 @@ class IFS:
 
         # PNG decode (PIL) and LZ77 compress (Rust) both release the GIL, so
         # threads scale. The actual write loop is serial; this stages each
-        # file's packed bytes in memory.
-        with ThreadPoolExecutor() as ex:
+        # file's packed bytes in memory. Manage the executor manually so
+        # KeyboardInterrupt cancels pending work instead of waiting on the
+        # whole queue.
+        ex = ThreadPoolExecutor()
+        try:
             futures = {ex.submit(f.preload, **kwargs): f for f in to_compress}
             with tqdm(total=len(to_compress), desc='Compressing', disable=not progress) as bar:
                 for fut in as_completed(futures):
@@ -266,6 +274,8 @@ class IFS:
                     if progress:
                         tqdm.write(f.full_path)
                     bar.update(1)
+        finally:
+            ex.shutdown(wait=False, cancel_futures=True)
 
         tqdm_progress = None
         if progress:
