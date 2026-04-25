@@ -1,10 +1,8 @@
 import hashlib
-import itertools
 import threading
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
-from multiprocessing import Pool
 from os import utime, walk
 from os.path import basename, getmtime, isdir, isfile, join, splitext
 from time import time as unixtime
@@ -17,18 +15,11 @@ from tqdm import tqdm
 from . import utils
 from .handlers.generic_folder import GenericFolder
 from .handlers.image_file import ImageFile
-from .handlers.md5_folder import MD5Folder
 from .handlers.tex_folder import ImageCanvas
 
 SIGNATURE = 0x6CAD8F89
 
 FILE_VERSION = 3
-
-# must be toplevel or can't be pickled
-def _load(args):
-    f, kwargs = args
-    f.preload(**kwargs)
-    return f.full_path
 
 class FileBlob(object):
     ''' a basic wrapper around a file to deal with IFS data offset '''
@@ -262,30 +253,19 @@ class IFS:
         ifs_file.close()
 
     def _repack_tree(self, progress = True, **kwargs):
-        folders = self.tree.all_folders
         files = self.tree.all_files
+        needs_preload = [f for f in files if f.needs_preload or not kwargs['use_cache']]
 
-        # Can't pickle lmxl, so to dirty-hack land we go
-        kbin_backup = []
-        for folder in folders:
-            if isinstance(folder, MD5Folder):
-                kbin_backup.append(folder.info_kbin)
-                folder.info_kbin = None
-
-        needs_preload = (f for f in files if f.needs_preload or not kwargs['use_cache'])
-        args = list(zip(needs_preload, itertools.cycle((kwargs,))))
-        p = Pool()
-        for f in tqdm(p.imap_unordered(_load, args), desc='Caching', total=len(args), disable = not progress):
-            if progress:
-                tqdm.write(f)
-
-        p.close()
-        p.terminate()
-
-        # restore stuff from before
-        for folder in folders:
-            if isinstance(folder, MD5Folder):
-                folder.info_kbin = kbin_backup.pop(0)
+        # LZ77 compress and PIL decode both release the GIL, so threads scale.
+        with ThreadPoolExecutor() as ex:
+            futures = {ex.submit(f.preload, **kwargs): f for f in needs_preload}
+            with tqdm(total=len(needs_preload), desc='Caching', disable=not progress) as bar:
+                for fut in as_completed(futures):
+                    fut.result()
+                    f = futures[fut]
+                    if progress:
+                        tqdm.write(f.full_path)
+                    bar.update(1)
 
         tqdm_progress = None
         if progress:

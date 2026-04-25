@@ -1,13 +1,6 @@
 import argparse
 import os
-import multiprocessing # for pyinstaller fixes
 from sys import exit # exe freeze
-try:
-    # py 2
-    input = raw_input
-except NameError:
-    # py 3
-    pass
 
 from .ifs import IFS
 
@@ -34,7 +27,6 @@ def repack(i, args, path):
     i.repack(path=path, **vars(args))
 
 def main():
-    multiprocessing.freeze_support() # pyinstaller
     parser = argparse.ArgumentParser(description='Unpack/pack IFS files and textures')
     parser.add_argument('files', metavar='file_to_unpack.ifs|folder_to_repack_ifs', type=str, nargs='+',
                        help='files/folders to process. Files will be unpacked, folders will be repacked')
