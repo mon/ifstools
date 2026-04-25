@@ -1,5 +1,6 @@
+from array import array
 from io import BytesIO
-from struct import unpack, pack
+from struct import pack
 
 from PIL import Image
 from tqdm import tqdm
@@ -47,10 +48,10 @@ def decode_dxt(ifs_img, data, version):
     b.write(version)
     b.write(dxt_end)
     # the data has swapped endianness for every WORD
-    l = len(data)//2
-    big = unpack('>{}H'.format(l), data)
-    little = pack('<{}H'.format(l), *big)
-    b.write(little)
+    swapped = array('H')
+    swapped.frombytes(data)
+    swapped.byteswap()
+    b.write(swapped.tobytes())
     return Image.open(b)
 
 def decode_dxt5(ifs_img, data):
