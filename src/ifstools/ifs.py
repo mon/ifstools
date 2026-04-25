@@ -1,6 +1,8 @@
 import hashlib
 import itertools
+import threading
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
 from multiprocessing import Pool
 from os import utime, walk
@@ -23,11 +25,6 @@ SIGNATURE = 0x6CAD8F89
 FILE_VERSION = 3
 
 # must be toplevel or can't be pickled
-def _extract(args):
-    f, path, kwargs = args
-    f.extract(path, **kwargs)
-    return f
-
 def _load(args):
     f, kwargs = args
     f.preload(**kwargs)
@@ -38,10 +35,13 @@ class FileBlob(object):
     def __init__(self, file, offset):
         self.file = file
         self.offset = offset
+        # seek+read must be atomic when extract is multithreaded.
+        self._lock = threading.Lock()
 
     def get(self, offset, size):
-        self.file.seek(offset + self.offset)
-        return self.file.read(size)
+        with self._lock:
+            self.file.seek(offset + self.offset)
+            return self.file.read(size)
 
 class IFS:
     def __init__(self, path, super_disable = False, super_skip_bad = False,
@@ -185,39 +185,33 @@ class IFS:
                                'Use --rename-dupes to extract without loss')
                 # else just do nothing
 
-        # extract the files
-        for f in tqdm(self.tree.all_files, disable = not progress):
-            # allow recurse + tex_only to extract ifs files
-            if tex_only and not isinstance(f, (ImageFile, ImageCanvas)) and not (recurse and f.name.endswith('.ifs')):
-                continue
-            f.extract(path, **kwargs)
-            if progress:
-                tqdm.write(f.full_path)
-            if recurse and f.name.endswith('.ifs'):
-                rpath = join(path, f.full_path)
-                i = IFS(rpath)
-                i.extract(progress=progress, recurse=recurse, tex_only=tex_only,
-                    extract_manifest=extract_manifest, path=rpath.replace('.ifs','_ifs'),
-                    rename_dupes=rename_dupes, **kwargs)
+        to_extract = [f for f in self.tree.all_files
+                      if not (tex_only
+                              and not isinstance(f, (ImageFile, ImageCanvas))
+                              and not (recurse and f.name.endswith('.ifs')))]
 
+        # extract the files in parallel — the LZ77 native extension and PIL's
+        # PNG codec both release the GIL, so threads scale across cores.
+        with ThreadPoolExecutor() as ex:
+            futures = {ex.submit(f.extract, path, **kwargs): f for f in to_extract}
+            with tqdm(total=len(to_extract), disable=not progress) as bar:
+                for fut in as_completed(futures):
+                    fut.result()
+                    f = futures[fut]
+                    if progress:
+                        tqdm.write(f.full_path)
+                    bar.update(1)
 
-        # you can't pickle open files, so this won't work. Perhaps there is a way around it?
-        '''to_extract = (f for f in self.tree.all_files if not(tex_only and not isinstance(f, (ImageFile, ImageCanvas))))
-
-        p = Pool()
-        args = zip(to_extract, itertools.cycle((path,)), itertools.cycle((kwargs,)))
-
-        to_recurse = []
-        for f in tqdm(p.imap_unordered(_extract, args)):
-            if progress:
-                tqdm.write(f)
-            if recurse and f.name.endswith('.ifs'):
-                to_recurse.append(join(path, f.full_path))
-
-        for rpath in recurse:
-            i = IFS(rpath)
-            i.extract(progress=progress, recurse=recurse, tex_only=tex_only,
-                extract_manifest=extract_manifest, path=rpath.replace('.ifs','_ifs'), **kwargs)'''
+        # nested IFS extraction is sequential: each child opens its own thread
+        # pool so we'd otherwise oversubscribe.
+        if recurse:
+            for f in to_extract:
+                if f.name.endswith('.ifs'):
+                    rpath = join(path, f.full_path)
+                    i = IFS(rpath)
+                    i.extract(progress=progress, recurse=recurse, tex_only=tex_only,
+                        extract_manifest=extract_manifest, path=rpath.replace('.ifs','_ifs'),
+                        rename_dupes=rename_dupes, **kwargs)
 
     def repack(self, progress = True, path = None, **kwargs):
         if path is None:
