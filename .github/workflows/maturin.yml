@@ -203,8 +203,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: astral-sh/setup-uv@v7
       - name: Install ifstools (builds the native extension via maturin)
-        run: uv venv --clear
-        run: uv pip install . pyinstaller==6.19.0
+        run: |
+          uv venv --clear
+          uv pip install . pyinstaller==6.19.0
       - name: Build standalone exe
         run: uv run pyinstaller --onefile --name ifstools ifstools_bin.py
       - uses: actions/upload-artifact@v6
