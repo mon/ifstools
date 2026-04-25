@@ -1,7 +1,10 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
 
 [project]
 name = "ifstools"
-version = "1.5"
+version = "2.0"
 description = "Extractor/repacker for Konmai IFS files"
 readme = "README.md"
 authors = [
@@ -21,6 +24,7 @@ Homepage = "https://github.com/mon/ifstools/"
 [project.scripts]
 ifstools = "ifstools:main"
 
-[build-system]
-requires = ["setuptools>=78"]
-build-backend = "setuptools.build_meta"
+[tool.maturin]
+python-source = "src"
+module-name = "ifstools.handlers._lz77_native"
+features = ["pyo3/extension-module"]

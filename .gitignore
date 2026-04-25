@@ -8,3 +8,6 @@ ifstools.egg-info/
 venv/
 ifstools.spec
 /ifstools-*/
+target/
+*.so
+*.dll

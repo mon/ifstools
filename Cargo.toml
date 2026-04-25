@@ -1,0 +1,16 @@
+[package]
+name = "ifstools-native"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "_lz77_native"
+crate-type = ["cdylib", "rlib"]
+path = "rust/lib.rs"
+
+[dependencies]
+pyo3 = { version = "0.28", features = ["extension-module", "abi3-py310"] }
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
