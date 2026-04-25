@@ -2,6 +2,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 
+mod dxt;
 mod lz77;
 mod png_enc;
 
@@ -41,11 +42,27 @@ fn py_encode_png<'py>(
     Ok(PyBytes::new(py, &out))
 }
 
+#[pyfunction]
+#[pyo3(name = "decode_dxt")]
+fn py_decode_dxt<'py>(
+    py: Python<'py>,
+    data: Vec<u8>,
+    width: usize,
+    height: usize,
+    format: &str,
+) -> PyResult<Bound<'py, PyBytes>> {
+    let out = py
+        .detach(|| dxt::decode(&data, width, height, format))
+        .map_err(|e| PyValueError::new_err(e.to_string()))?;
+    Ok(PyBytes::new(py, &out))
+}
+
 #[pymodule]
 #[pyo3(name = "_native")]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_decompress, m)?)?;
     m.add_function(wrap_pyfunction!(py_compress, m)?)?;
     m.add_function(wrap_pyfunction!(py_encode_png, m)?)?;
+    m.add_function(wrap_pyfunction!(py_decode_dxt, m)?)?;
     Ok(())
 }

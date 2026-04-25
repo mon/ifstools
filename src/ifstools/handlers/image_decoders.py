@@ -1,6 +1,4 @@
-from array import array
 from io import BytesIO
-from struct import pack
 
 from PIL import Image
 from tqdm import tqdm
@@ -24,20 +22,6 @@ def encode_png(im):
         im = im.convert('RGBA')
     return _native.encode_png(im.width, im.height, im.tobytes(), im.mode.lower())
 
-# header for a standard DDS with DXT5 compression and RGBA pixels
-# gap placed for image height/width insertion
-dxt_start =  b'DDS |\x00\x00\x00\x07\x10\x00\x00'
-
-dxt_middle = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
-             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
-             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
-             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00 \x00\x00\x00\x04' + \
-             b'\x00\x00\x00'
-
-dxt_end =    b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
-             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00' + \
-             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-
 def check_size(ifs_img, data, bytes_per_pixel):
     need = ifs_img.img_size[0] * ifs_img.img_size[1] * bytes_per_pixel
     if len(data) < need:
@@ -60,24 +44,14 @@ def decode_argb4444(ifs_img, data):
     return Image.merge('RGBA', (b, g, r, a))
 
 def decode_dxt(ifs_img, data, version):
-    b = BytesIO()
-    b.write(dxt_start)
-    b.write(pack('<2I', ifs_img.img_size[1], ifs_img.img_size[0]))
-    b.write(dxt_middle)
-    b.write(version)
-    b.write(dxt_end)
-    # the data has swapped endianness for every WORD
-    swapped = array('H')
-    swapped.frombytes(data)
-    swapped.byteswap()
-    b.write(swapped.tobytes())
-    return Image.open(b)
+    rgba = _native.decode_dxt(data, ifs_img.img_size[0], ifs_img.img_size[1], version)
+    return Image.frombytes('RGBA', ifs_img.img_size, rgba)
 
 def decode_dxt5(ifs_img, data):
-    return decode_dxt(ifs_img, data, b'DXT5')
+    return decode_dxt(ifs_img, data, 'dxt5')
 
 def decode_dxt1(ifs_img, data):
-    return decode_dxt(ifs_img, data, b'DXT1')
+    return decode_dxt(ifs_img, data, 'dxt1')
 
 
 image_formats = {
