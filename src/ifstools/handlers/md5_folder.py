@@ -2,7 +2,8 @@ from hashlib import md5
 
 from kbinxml import KBinXML
 
-from . import GenericFolder
+from .generic_folder import GenericFolder
+
 
 class MD5Folder(GenericFolder):
 

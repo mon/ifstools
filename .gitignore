@@ -7,3 +7,4 @@ dist/
 ifstools.egg-info/
 venv/
 ifstools.spec
+/ifstools-*/

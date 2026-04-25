@@ -1,10 +1,11 @@
 import os
 
-from kbinxml import KBinXML
 import lxml.etree as etree
+from kbinxml import KBinXML
 
-from .Node import Node
 from .. import utils
+from .node import Node
+
 
 class GenericFile(Node):
     def from_xml(self, element):

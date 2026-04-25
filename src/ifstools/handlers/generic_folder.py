@@ -1,12 +1,13 @@
-from itertools import chain
-from os.path import getmtime, basename, dirname, join, realpath, isfile
 from collections import OrderedDict
+from itertools import chain
+from os.path import basename, dirname, getmtime, isfile, join, realpath
 
 import lxml.etree as etree
 from tqdm import tqdm
 
-from . import GenericFile
-from .Node import Node
+from .generic_file import GenericFile
+from .node import Node
+
 
 class GenericFolder(Node):
 
@@ -14,7 +15,8 @@ class GenericFolder(Node):
             supers = None, super_disable = False, super_skip_bad = False,
             super_abort_if_bad = False):
         # circular dependencies mean we import here
-        from . import AfpFolder, TexFolder
+        from .afp_folder import AfpFolder
+        from .tex_folder import TexFolder
         self.folder_handlers = {
             'afp' : AfpFolder,
             'tex' : TexFolder,

@@ -1,19 +1,22 @@
-from collections import defaultdict
-from multiprocessing import Pool
-from os.path import basename, dirname, splitext, join, isdir, isfile, getmtime
-from os import utime, walk
-from io import BytesIO
-import itertools
 import hashlib
-import lxml.etree as etree
+import itertools
+from collections import defaultdict
+from io import BytesIO
+from multiprocessing import Pool
+from os import utime, walk
+from os.path import basename, getmtime, isdir, isfile, join, splitext
 from time import time as unixtime
 
-from tqdm import tqdm
+import lxml.etree as etree
 from kbinxml import KBinXML
 from kbinxml.bytebuffer import ByteBuffer
+from tqdm import tqdm
 
-from .handlers import GenericFolder, MD5Folder, ImageFile, ImageCanvas
 from . import utils
+from .handlers.generic_folder import GenericFolder
+from .handlers.image_file import ImageFile
+from .handlers.md5_folder import MD5Folder
+from .handlers.tex_folder import ImageCanvas
 
 SIGNATURE = 0x6CAD8F89
 
@@ -185,7 +188,7 @@ class IFS:
         # extract the files
         for f in tqdm(self.tree.all_files, disable = not progress):
             # allow recurse + tex_only to extract ifs files
-            if tex_only and not isinstance(f, ImageFile) and not isinstance(f, ImageCanvas) and not (recurse and f.name.endswith('.ifs')):
+            if tex_only and not isinstance(f, (ImageFile, ImageCanvas)) and not (recurse and f.name.endswith('.ifs')):
                 continue
             f.extract(path, **kwargs)
             if progress:
@@ -199,7 +202,7 @@ class IFS:
 
 
         # you can't pickle open files, so this won't work. Perhaps there is a way around it?
-        '''to_extract = (f for f in self.tree.all_files if not(tex_only and not isinstance(f, ImageFile) and not isinstance(f, ImageCanvas)))
+        '''to_extract = (f for f in self.tree.all_files if not(tex_only and not isinstance(f, (ImageFile, ImageCanvas))))
 
         p = Pool()
         args = zip(to_extract, itertools.cycle((path,)), itertools.cycle((kwargs,)))

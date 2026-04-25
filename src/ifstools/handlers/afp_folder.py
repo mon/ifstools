@@ -1,4 +1,5 @@
-from . import MD5Folder
+from .md5_folder import MD5Folder
+
 
 class AfpFolder(MD5Folder):
 

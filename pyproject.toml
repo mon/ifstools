@@ -1,0 +1,26 @@
+
+[project]
+name = "ifstools"
+version = "1.5"
+description = "Extractor/repacker for Konmai IFS files"
+readme = "README.md"
+authors = [
+    {name = "mon", email = "me@mon.im"},
+]
+dependencies = [
+    "kbinxml>=1.5",
+    "lxml",
+    "pillow",
+    "tqdm",
+]
+requires-python = ">=3.10"
+
+[project.urls]
+Homepage = "https://github.com/mon/ifstools/"
+
+[project.scripts]
+ifstools = "ifstools:main"
+
+[build-system]
+requires = ["setuptools>=78"]
+build-backend = "setuptools.build_meta"

@@ -1,5 +1,0 @@
-lxml
-tqdm
-pillow
-future
-kbinxml>=1.5

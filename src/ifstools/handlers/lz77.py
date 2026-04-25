@@ -1,7 +1,7 @@
 # consistency with py 2/3
 from builtins import bytes
-from struct import unpack, pack
 from io import BytesIO
+from struct import pack, unpack
 
 from tqdm import tqdm
 

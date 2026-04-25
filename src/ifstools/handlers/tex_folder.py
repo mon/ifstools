@@ -1,11 +1,14 @@
 from io import BytesIO
 
 from kbinxml import KBinXML
-from tqdm import tqdm
 from PIL import Image, ImageDraw
+from tqdm import tqdm
 
-from . import MD5Folder, ImageFile, GenericFile
-from .ImageDecoders import cachable_formats
+from .generic_file import GenericFile
+from .image_decoders import cachable_formats
+from .image_file import ImageFile
+from .md5_folder import MD5Folder
+
 
 class TextureList(GenericFile):
     def _load_from_filesystem(self, **kwargs):
