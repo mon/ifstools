@@ -18,6 +18,8 @@ Have Python installed? Do this:
 `pip install ifstools`  
 Then run `ifstools` from anywhere in a command prompt.
 
+Have [uv](https://docs.astral.sh/uv/) installed? You can just `uvx ifstools`.
+
 ## Usage
 ```
 usage: ifstools [-h] [-e] [-y] [-o OUT_DIR] [--tex-only] [-c]
