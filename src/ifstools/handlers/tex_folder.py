@@ -58,7 +58,8 @@ class ImageCanvas(GenericFile):
 
     # since it's basically metadata, we ignore similarly to _cache
     def repack(self, manifest, data_blob, tqdm_progress, **kwargs):
-        return
+        if tqdm_progress:
+            tqdm_progress.update(1)
 
 class TexFolder(MD5Folder):
     def __init__(self, ifs_data, obj, parent = None, path = '', name = '', supers = None,
