@@ -9,11 +9,6 @@ use texpresso::Format;
 #[derive(Debug)]
 pub enum DxtError {
     UnknownFormat(String),
-    SizeMismatch {
-        expected: usize,
-        got: usize,
-        format: &'static str,
-    },
     OddByteCount(usize),
 }
 
@@ -21,11 +16,6 @@ impl std::fmt::Display for DxtError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             DxtError::UnknownFormat(s) => write!(f, "unknown DXT format: {}", s),
-            DxtError::SizeMismatch { expected, got, format } => write!(
-                f,
-                "{}: expected {} compressed bytes, got {}",
-                format, expected, got
-            ),
             DxtError::OddByteCount(n) => write!(f, "input length {} is not a multiple of 2", n),
         }
     }
@@ -60,16 +50,12 @@ pub fn decode(
     let expected = fmt.compressed_size(width, height);
 
     // Konami's per-WORD byte swap, with zero padding if the source is short.
+    // n is always even: data.len() is checked above, expected is a DXT block size.
     let mut swapped = vec![0u8; expected];
     let n = data.len().min(expected);
-    let pairs = n / 2;
-    for i in 0..pairs {
-        swapped[i * 2] = data[i * 2 + 1];
-        swapped[i * 2 + 1] = data[i * 2];
-    }
-    if n % 2 != 0 {
-        // Trailing odd byte (only possible when source is shorter than expected).
-        swapped[n - 1] = data[n - 1];
+    swapped[..n].copy_from_slice(&data[..n]);
+    for chunk in swapped[..n].chunks_exact_mut(2) {
+        chunk.swap(0, 1);
     }
     let _ = fmt_name; // currently only used for error formatting
 
