@@ -64,6 +64,27 @@ pub fn decode(
     Ok(rgba)
 }
 
+/// Encode raw RGBA8 pixels (`width * height * 4` bytes) into Konami-format DXT
+/// data. Inverse of `decode`: compress to canonical DXT, then apply the
+/// per-WORD byte swap Konami's textures use.
+pub fn encode(
+    rgba: &[u8],
+    width: usize,
+    height: usize,
+    format: &str,
+) -> Result<Vec<u8>, DxtError> {
+    let (fmt, _) = parse_format(format)?;
+
+    let mut out = vec![0u8; fmt.compressed_size(width, height)];
+    fmt.compress(rgba, width, height, texpresso::Params::default(), &mut out);
+
+    // compressed_size is always a multiple of the (even) block size.
+    for chunk in out.chunks_exact_mut(2) {
+        chunk.swap(0, 1);
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -90,6 +111,19 @@ mod tests {
         for px in rgba.chunks_exact(4) {
             assert_eq!(px[3], 0xFF, "alpha not opaque: {:?}", px);
         }
+    }
+
+    #[test]
+    fn dxt5_roundtrip() {
+        // Encode a solid opaque red 4x4, decode it, expect it back (DXT is
+        // lossy but a single flat color survives exactly).
+        let mut rgba = Vec::new();
+        for _ in 0..16 {
+            rgba.extend_from_slice(&[0xFF, 0x00, 0x00, 0xFF]);
+        }
+        let konami = encode(&rgba, 4, 4, "dxt5").unwrap();
+        let decoded = decode(&konami, 4, 4, "dxt5").unwrap();
+        assert_eq!(decoded, rgba);
     }
 
     #[test]

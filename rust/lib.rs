@@ -57,6 +57,21 @@ fn py_decode_dxt<'py>(
     Ok(PyBytes::new(py, &out))
 }
 
+#[pyfunction]
+#[pyo3(name = "encode_dxt")]
+fn py_encode_dxt<'py>(
+    py: Python<'py>,
+    rgba: Vec<u8>,
+    width: usize,
+    height: usize,
+    format: &str,
+) -> PyResult<Bound<'py, PyBytes>> {
+    let out = py
+        .detach(|| dxt::encode(&rgba, width, height, format))
+        .map_err(|e| PyValueError::new_err(e.to_string()))?;
+    Ok(PyBytes::new(py, &out))
+}
+
 #[pymodule]
 #[pyo3(name = "_native")]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -64,5 +79,6 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_compress, m)?)?;
     m.add_function(wrap_pyfunction!(py_encode_png, m)?)?;
     m.add_function(wrap_pyfunction!(py_decode_dxt, m)?)?;
+    m.add_function(wrap_pyfunction!(py_encode_dxt, m)?)?;
     Ok(())
 }

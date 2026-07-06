@@ -53,12 +53,15 @@ def decode_dxt5(ifs_img, data):
 def decode_dxt1(ifs_img, data):
     return decode_dxt(ifs_img, data, 'dxt1')
 
+def encode_dxt5(ifs_img, image):
+    return _native.encode_dxt(image.tobytes('raw', 'RGBA'), image.width, image.height, 'dxt5')
+
 
 image_formats = {
     'argb8888rev' : {'decoder': decode_argb8888rev, 'encoder': encode_argb8888rev},
     'argb4444'    : {'decoder': decode_argb4444, 'encoder': None},
     'dxt1'        : {'decoder': decode_dxt1, 'encoder': None},
-    'dxt5'        : {'decoder': decode_dxt5, 'encoder': None},
+    'dxt5'        : {'decoder': decode_dxt5, 'encoder': encode_dxt5 if _native else None},
 }
 
 cachable_formats = [key for key, val in image_formats.items() if val['encoder'] is not None]
