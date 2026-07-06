@@ -65,12 +65,14 @@ optional arguments:
 ```
 
 ## Build an exe
-`pip install pyinstaller`  
-`pyinstaller ifstools_bin.py --onefile -n ifstools`  
-Recommend doing this in a fresh venv so the module finder doesn't include more than required.
+```shell
+uv venv --clear
+uv pip install . pyinstaller==6.19.0
+uv run pyinstaller --onefile --name ifstools ifstools_bin.py
+```
 
 Notes:
-- dxt5 texture repacking is not fully supported - they will silently be converted to argb8888rev
+- argb8888rev and dxt5 can be repacked. Other formats will silently be converted to argb8888rev
 
 Todo:
 - Recursive repacking for ifs inside ifs
