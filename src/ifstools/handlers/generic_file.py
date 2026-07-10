@@ -2,6 +2,7 @@ import os
 
 import lxml.etree as etree
 from kbinxml import KBinXML
+from kbinxml.kbinxml import KBinException
 
 from .. import utils
 from .node import Node
@@ -37,7 +38,12 @@ class GenericFile(Node):
         data = self.ifs_data.get(self.start, self.size)
 
         if convert_kbin and self.name.endswith('.xml') and KBinXML.is_binary_xml(data):
-            data = KBinXML(data).to_text().encode('utf8')
+            try:
+                data = KBinXML(data).to_text().encode('utf8')
+            except KBinException as e:
+                if 'convert_illegal_things' in e.args[0]:
+                    print("Corrupt xml found, trying to decode as utf8")
+                    data = KBinXML(data, convert_illegal_things=True).to_text().encode('utf8')
         return data
 
     def _load_from_filesystem(self, **kwargs):

@@ -1,6 +1,7 @@
 from hashlib import md5
 
 from kbinxml import KBinXML
+from kbinxml.kbinxml import KBinException
 
 from .generic_folder import GenericFolder
 
@@ -20,6 +21,7 @@ class MD5Folder(GenericFolder):
 
         self.info_kbin = None
         self.info_file = None
+        self.encoding_override = None
         for filename, file in self.files.items():
             if filename.endswith('.xml'):
                 self.info_file = file
@@ -29,7 +31,15 @@ class MD5Folder(GenericFolder):
             # _super_ references to info XML breaks things - just extract what we can
             return
 
-        self.info_kbin = KBinXML(self.info_file.load(convert_kbin = False))
+        kbin_raw = self.info_file.load(convert_kbin = False)
+        try:
+            self.info_kbin = KBinXML(kbin_raw)
+        except KBinException as e:
+            if 'convert_illegal_things' in e.args[0]:
+                print("Corrupt texturelist xml found, trying to decode as utf8")
+                self.info_kbin = KBinXML(kbin_raw, convert_illegal_things=True)
+                self.encoding_override = 'utf8'
+
         self._apply_md5()
 
     def _apply_md5(self):
@@ -39,7 +49,7 @@ class MD5Folder(GenericFolder):
 
     def _apply_md5_folder(self, plain_list, folder):
         for plain in plain_list:
-            hashed = md5(plain.encode(self.info_kbin.encoding)).hexdigest()
+            hashed = md5(plain.encode(self.encoding_override or self.info_kbin.encoding)).hexdigest()
 
             if self.extension:
                 plain += self.extension
