@@ -43,6 +43,13 @@ def decode_argb4444(ifs_img, data):
     r, g, b, a = im.split()
     return Image.merge('RGBA', (b, g, r, a))
 
+def encode_argb4444(ifs_img, image):
+    # there's no BGRA;4B
+    r, g, b, a = image.split()
+    image = Image.merge('RGBA', (b, g, r, a))
+
+    return image.tobytes('raw', 'RGBA;4B')
+
 def decode_dxt(ifs_img, data, version):
     rgba = _native.decode_dxt(data, ifs_img.img_size[0], ifs_img.img_size[1], version)
     return Image.frombytes('RGBA', ifs_img.img_size, rgba)
@@ -59,7 +66,7 @@ def encode_dxt5(ifs_img, image):
 
 image_formats = {
     'argb8888rev' : {'decoder': decode_argb8888rev, 'encoder': encode_argb8888rev},
-    'argb4444'    : {'decoder': decode_argb4444, 'encoder': None},
+    'argb4444'    : {'decoder': decode_argb4444, 'encoder': encode_argb4444},
     'dxt1'        : {'decoder': decode_dxt1, 'encoder': None},
     'dxt5'        : {'decoder': decode_dxt5, 'encoder': encode_dxt5 if _native else None},
 }
