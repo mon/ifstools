@@ -52,6 +52,8 @@ def main():
                        help='don\'t display files as they are processed')
     parser.add_argument('-r', '--norecurse', action='store_false', dest='recurse',
                        help='if file contains another IFS, don\'t extract its contents')
+    parser.add_argument('--ifs-version', type=int, choices=[1, 2, 3], default=None,
+                        help='IFS format version when repacking (1: LPAC/legacy plain XML, 2/3: binary KBinXML; default: 3 or autodetect)', dest='ifs_version')
 
     args = parser.parse_args()
 
@@ -75,7 +77,7 @@ def main():
             print(f)
         try:
             i = IFS(f, super_disable=args.super_disable, super_skip_bad=args.super_skip_bad,
-                super_abort_if_bad=args.super_abort_if_bad)
+                super_abort_if_bad=args.super_abort_if_bad, ifs_version=args.ifs_version)
         except IOError as e:
             # human friendly
             print('{}: {}'.format(os.path.basename(f), str(e)))

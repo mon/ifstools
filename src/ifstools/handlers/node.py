@@ -4,6 +4,7 @@ import lxml.etree as etree
 
 escapes = [
     ('_E', '.'),
+    ('_D', '-'),
     ('__', '_'),
 ]
 
