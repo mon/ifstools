@@ -1,12 +1,36 @@
 import os
+import re
 
 import lxml.etree as etree
 
-escapes = [
-    ('_E', '.'),
-    ('_D', '-'),
-    ('__', '_'),
-]
+CHAR_TO_ESCAPE = {
+    '_': '__',
+    ' ': '_A',
+    '$': '_B',
+    '+': '_C',
+    '-': '_D',
+    '.': '_E',
+    ':': '_F',
+    '@': '_G',
+    '~': '_H',
+}
+
+ESCAPE_TO_CHAR = {
+    '__': '_',
+    '_A': ' ',
+    '_B': '$',
+    '_C': '+',
+    '_D': '-',
+    '_E': '.',
+    '_F': ':',
+    '_G': '@',
+    '_H': '~',
+}
+for d in '0123456789':
+    ESCAPE_TO_CHAR['_' + d] = d
+
+ESCAPE_PATTERN = re.compile(r'__|_A|_B|_C|_D|_E|_F|_G|_H|_[0-9]')
+SANITIZE_PATTERN = re.compile(r'[_ \$+\.:@~-]')
 
 class Node(object):
 
@@ -51,19 +75,22 @@ class Node(object):
 
     @staticmethod
     def sanitize_name(n):
-        for e in escapes[::-1]:
-            n = n.replace(e[1], e[0])
-        if n[0].isdigit():
-            n = '_' + n
-        return n
+        if not n:
+            return n
+        res = SANITIZE_PATTERN.sub(lambda m: CHAR_TO_ESCAPE[m.group(0)], n)
+        if res and res[0].isdigit():
+            res = '_' + res
+        return res
 
     @staticmethod
     def fix_name(n):
-        for e in escapes:
-            n = n.replace(*e)
-        if n[0] == '_' and n[1].isdigit():
-            n = n[1:]
-        return n
+        if not n:
+            return n
+        if n.startswith('_') and len(n) > 1 and n[1].isdigit():
+            first = n[1]
+            rest = ESCAPE_PATTERN.sub(lambda m: ESCAPE_TO_CHAR[m.group(0)], n[2:])
+            return first + rest
+        return ESCAPE_PATTERN.sub(lambda m: ESCAPE_TO_CHAR[m.group(0)], n)
 
     @staticmethod
     def _split_ints(text, delim = ' '):

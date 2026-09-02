@@ -96,19 +96,17 @@ class IFS:
         if ifs_version is not None:
             self.file_version = ifs_version
         else:
+            self.file_version = FILE_VERSION
             manifest_path = join(path, 'ifs_manifest.xml')
             if isfile(manifest_path):
                 try:
                     with open(manifest_path, 'rb') as mf:
-                        m_content = mf.read(1024)
-                        if b'_info_' not in m_content:
+                        manifest_xml = etree.parse(mf).getroot()
+                        # IFS v1 manifests lack the _info_ metadata node present in v2+
+                        if manifest_xml.find('_info_') is None:
                             self.file_version = 1
-                        else:
-                            self.file_version = FILE_VERSION
                 except Exception:
-                    self.file_version = FILE_VERSION
-            else:
-                self.file_version = FILE_VERSION
+                    pass
 
         self.time = int(getmtime(path))
         self.data_blob = None
@@ -240,6 +238,11 @@ class IFS:
 
             data = self._repack_tree(progress, **kwargs)
 
+            # Use KBinXML's built-in memory pool size calculator for plain XML
+            kbin = KBinXML(manifest_elem)
+            kbin.compressed = False
+            tree_sz = kbin.mem_size
+
             manifest_bin = etree.tostring(manifest_elem, encoding='utf-8')
             manifest_len = len(manifest_bin)
 
@@ -247,9 +250,6 @@ class IFS:
             manifest_end = (20 + manifest_len + 1 + 15) & ~15
             pad_len = manifest_end - (20 + manifest_len)
             manifest_pad = b'\x00' * pad_len
-
-            # Memory pool size estimate for libavs XML parser
-            tree_sz = max(manifest_len * 2, 4096)
 
             head = ByteBuffer()
             head.append_u32(SIGNATURE)
