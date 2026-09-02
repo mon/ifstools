@@ -1,11 +1,25 @@
+import contextlib
 import os
 
 import lxml.etree as etree
 
-escapes = [
-    ('_E', '.'),
-    ('__', '_'),
-]
+special_names = ('_info_', '_super_')
+
+escapes = {
+    ' ': '_A',
+    '$': '_B',
+    '+': '_C',
+    '-': '_D',
+    '.': '_E',
+    ':': '_F',
+    '@': '_G',
+    '~': '_H',
+    '_': '__',
+}
+
+sanitize_lookup = str.maketrans(escapes)
+
+fix_lookup = {escaped[1]: real for real, escaped in escapes.items()}
 
 class Node(object):
 
@@ -50,21 +64,63 @@ class Node(object):
 
     @staticmethod
     def sanitize_name(n):
-        for e in escapes[::-1]:
-            n = n.replace(e[1], e[0])
-        if n[0].isdigit():
-            n = '_' + n
-        return n
+        if n in special_names:
+            return n
+
+        if not n:
+            raise ValueError("Sanitizing an empty name is invalid")
+
+        sanitized = n.translate(sanitize_lookup)
+
+        if sanitized[0].isdigit():
+            sanitized = '_' + sanitized
+
+        return sanitized
 
     @staticmethod
     def fix_name(n):
-        for e in escapes:
-            n = n.replace(*e)
-        if n[0] == '_' and n[1].isdigit():
-            n = n[1:]
-        return n
+        if n in special_names:
+            return n
+
+        start = 0
+        fixed = n
+        while (idx := fixed.find('_', start)) != -1:
+            try:
+                key = fixed[idx+1]
+                if idx == 0 and key.isdigit():
+                    new = key
+                else:
+                    new = fix_lookup[key]
+            except (IndexError, KeyError):
+                raise ValueError(f"Invalid escaped string {n!r}") from None
+
+            fixed = fixed[:idx] + new + fixed[idx+2:]
+
+            start = idx + 1
+
+        return fixed
 
     @staticmethod
     def _split_ints(text, delim = ' '):
         return list(map(int, text.split(delim)))
 
+# who needs real tests anyway)
+assert Node.sanitize_name("_A9") == "__A9"
+assert Node.sanitize_name("9_A9") == "_9__A9"
+assert Node.sanitize_name("__") == "____"
+
+assert Node.fix_name("__A9") == "_A9"
+assert Node.fix_name("_9_A9") == "9 9"
+assert Node.fix_name("____9") == "__9"
+with contextlib.suppress(ValueError):
+    Node.fix_name("___Q")
+    assert False
+with contextlib.suppress(ValueError):
+    Node.fix_name("_")
+    assert False
+with contextlib.suppress(ValueError):
+    Node.fix_name("_9_A_9")
+    assert False
+with contextlib.suppress(ValueError):
+    Node.sanitize_name("")
+    assert False
