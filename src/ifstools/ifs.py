@@ -4,7 +4,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
 from os import utime, walk
-from os.path import basename, getmtime, isdir, isfile, join, splitext
+from os.path import basename, dirname, getmtime, isdir, isfile, join, realpath, splitext
 from time import time as unixtime
 
 import lxml.etree as etree
@@ -36,11 +36,11 @@ class FileBlob(object):
 
 class IFS:
     def __init__(self, path, super_disable = False, super_skip_bad = False,
-            super_abort_if_bad = False):
+            super_abort_if_bad = False, ifs_version = None):
         if isfile(path):
             self.load_ifs(path, super_disable, super_skip_bad, super_abort_if_bad)
         elif isdir(path):
-            self.load_dir(path)
+            self.load_dir(path, ifs_version = ifs_version)
         else:
             raise IOError('Input path {} does not exist'.format(path))
 
@@ -81,7 +81,7 @@ class IFS:
         # IFS files repacked with other tools usually have wrong values - don't validate this
         #assert ifs_tree_size == self.manifest.mem_size
 
-    def load_dir(self, path):
+    def load_dir(self, path, ifs_version = None):
         self.is_file = False
         self.file = None
 
@@ -93,7 +93,21 @@ class IFS:
             self.ifs_out = self.folder_out + '.ifs'
         self.default_out = self.ifs_out
 
-        self.file_version = FILE_VERSION
+        if ifs_version is not None:
+            self.file_version = ifs_version
+        else:
+            self.file_version = FILE_VERSION
+            manifest_path = join(path, 'ifs_manifest.xml')
+            if isfile(manifest_path):
+                try:
+                    with open(manifest_path, 'rb') as mf:
+                        manifest_xml = etree.parse(mf).getroot()
+                        # IFS v1 manifests lack the _info_ metadata node present in v2+
+                        if manifest_xml.find('_info_') is None:
+                            self.file_version = 1
+                except Exception:
+                    pass
+
         self.time = int(getmtime(path))
         self.data_blob = None
         self.manifest = None
@@ -207,51 +221,86 @@ class IFS:
                         extract_manifest=extract_manifest, path=rpath.replace('.ifs','_ifs'),
                         rename_dupes=rename_dupes, **kwargs)
 
-    def repack(self, progress = True, path = None, **kwargs):
+    def repack(self, progress = True, path = None, ifs_version = None, **kwargs):
+        if ifs_version is not None:
+            self.file_version = ifs_version
         if path is None:
             path = self.ifs_out
+        utils.mkdir_silent(dirname(realpath(path)))
         # open first in case path is bad
         ifs_file = open(path, 'wb')
 
         self.data_blob = BytesIO()
 
-        self.manifest = KBinXML(etree.Element('imgfs'))
-        manifest_info = etree.SubElement(self.manifest.xml_doc, '_info_')
+        if self.file_version == 1:
+            manifest_elem = etree.Element('imgfs')
+            self.manifest = manifest_elem
 
-        # the important bit
-        data = self._repack_tree(progress, **kwargs)
+            data = self._repack_tree(progress, **kwargs)
 
-        data_md5 = etree.SubElement(manifest_info, 'md5')
-        data_md5.attrib['__type'] = 'bin'
-        data_md5.attrib['__size'] = '16'
-        data_md5.text = hashlib.md5(data).hexdigest()
+            # Use KBinXML's built-in memory pool size calculator for plain XML
+            kbin = KBinXML(manifest_elem)
+            kbin.compressed = False
+            tree_sz = kbin.mem_size
 
-        data_size = etree.SubElement(manifest_info, 'size')
-        data_size.attrib['__type'] = 'u32'
-        data_size.text = str(len(data))
+            manifest_bin = etree.tostring(manifest_elem, encoding='utf-8')
+            manifest_len = len(manifest_bin)
 
-        manifest_bin = self.manifest.to_binary()
-        manifest_hash = hashlib.md5(manifest_bin).digest()
+            # Header is 20 bytes. manifest_end is 16-byte aligned with null terminator
+            manifest_end = (20 + manifest_len + 1 + 15) & ~15
+            pad_len = manifest_end - (20 + manifest_len)
+            manifest_pad = b'\x00' * pad_len
 
-        head = ByteBuffer()
-        head.append_u32(SIGNATURE)
-        head.append_u16(self.file_version)
-        head.append_u16(self.file_version ^ 0xFFFF)
-        head.append_u32(int(unixtime()))
-        head.append_u32(self.manifest.mem_size)
+            head = ByteBuffer()
+            head.append_u32(SIGNATURE)
+            head.append_u16(1)
+            head.append_u16(1 ^ 0xFFFF)
+            head.append_u32(int(unixtime()))
+            head.append_u32(tree_sz)
+            head.append_u32(manifest_end)
 
-        manifest_end = len(manifest_bin) + head.offset + 4
-        if self.file_version > 1:
-            manifest_end += 16
+            ifs_file.write(head.data)
+            ifs_file.write(manifest_bin)
+            ifs_file.write(manifest_pad)
+            ifs_file.write(data)
+        else:
+            self.manifest = KBinXML(etree.Element('imgfs'))
+            manifest_info = etree.SubElement(self.manifest.xml_doc, '_info_')
 
-        head.append_u32(manifest_end)
+            # the important bit
+            data = self._repack_tree(progress, **kwargs)
 
-        if self.file_version > 1:
-            head.append_bytes(manifest_hash)
+            data_md5 = etree.SubElement(manifest_info, 'md5')
+            data_md5.attrib['__type'] = 'bin'
+            data_md5.attrib['__size'] = '16'
+            data_md5.text = hashlib.md5(data).hexdigest()
 
-        ifs_file.write(head.data)
-        ifs_file.write(manifest_bin)
-        ifs_file.write(data)
+            data_size = etree.SubElement(manifest_info, 'size')
+            data_size.attrib['__type'] = 'u32'
+            data_size.text = str(len(data))
+
+            manifest_bin = self.manifest.to_binary()
+            manifest_hash = hashlib.md5(manifest_bin).digest()
+
+            head = ByteBuffer()
+            head.append_u32(SIGNATURE)
+            head.append_u16(self.file_version)
+            head.append_u16(self.file_version ^ 0xFFFF)
+            head.append_u32(int(unixtime()))
+            head.append_u32(self.manifest.mem_size)
+
+            manifest_end = len(manifest_bin) + head.offset + 4
+            if self.file_version > 1:
+                manifest_end += 16
+
+            head.append_u32(manifest_end)
+
+            if self.file_version > 1:
+                head.append_bytes(manifest_hash)
+
+            ifs_file.write(head.data)
+            ifs_file.write(manifest_bin)
+            ifs_file.write(data)
 
         ifs_file.close()
 
@@ -280,6 +329,7 @@ class IFS:
         tqdm_progress = None
         if progress:
             tqdm_progress = tqdm(desc='Writing', total=len(files))
-        self.tree.repack(self.manifest.xml_doc, self.data_blob, tqdm_progress, **kwargs)
+        manifest_root = self.manifest if isinstance(self.manifest, etree._Element) else self.manifest.xml_doc
+        self.tree.repack(manifest_root, self.data_blob, tqdm_progress, **kwargs)
 
         return self.data_blob.getvalue()
