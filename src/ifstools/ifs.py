@@ -2,6 +2,7 @@ import hashlib
 import threading
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from enum import IntFlag
 from io import BytesIO
 from os import utime, walk
 from os.path import basename, getmtime, isdir, isfile, join, splitext
@@ -19,7 +20,12 @@ from .handlers.tex_folder import ImageCanvas
 
 SIGNATURE = 0x6CAD8F89
 
-FILE_VERSION = 3
+class IFSFlags(IntFlag):
+    UNK1 = 1
+    HasMD5 = 2
+    UncompressedManifest = 4
+
+DEFAULT_FLAGS = IFSFlags.UNK1 | IFSFlags.HasMD5
 
 class FileBlob(object):
     ''' a basic wrapper around a file to deal with IFS data offset '''
@@ -59,16 +65,16 @@ class IFS:
         signature = header.get_u32()
         if signature != SIGNATURE:
             raise IOError('Given file was not an IFS file!')
-        self.file_version = header.get_u16()
+        self.flags = IFSFlags(header.get_u16())
         # next u16 is just NOT(version)
-        assert header.get_u16() ^ self.file_version == 0xFFFF
+        assert header.get_u16() ^ self.flags == 0xFFFF
         self.time = header.get_u32()
         ifs_tree_size = header.get_u32()
         manifest_end = header.get_u32()
         self.data_blob = FileBlob(self.file, manifest_end)
 
         self.manifest_md5 = None
-        if self.file_version > 1:
+        if self.flags & IFSFlags.HasMD5:
             self.manifest_md5 = header.get_bytes(16)
 
         self.file.seek(header.offset)
@@ -93,7 +99,7 @@ class IFS:
             self.ifs_out = self.folder_out + '.ifs'
         self.default_out = self.ifs_out
 
-        self.file_version = FILE_VERSION
+        self.flags = DEFAULT_FLAGS
         self.time = int(getmtime(path))
         self.data_blob = None
         self.manifest = None
@@ -230,23 +236,23 @@ class IFS:
         data_size.attrib['__type'] = 'u32'
         data_size.text = str(len(data))
 
-        manifest_bin = self.manifest.to_binary()
+        manifest_bin = self.manifest.to_binary(compressed=not (self.flags & IFSFlags.UncompressedManifest))
         manifest_hash = hashlib.md5(manifest_bin).digest()
 
         head = ByteBuffer()
         head.append_u32(SIGNATURE)
-        head.append_u16(self.file_version)
-        head.append_u16(self.file_version ^ 0xFFFF)
+        head.append_u16(int(self.flags))
+        head.append_u16(int(self.flags) ^ 0xFFFF)
         head.append_u32(int(unixtime()))
         head.append_u32(self.manifest.mem_size)
 
         manifest_end = len(manifest_bin) + head.offset + 4
-        if self.file_version > 1:
+        if self.flags & IFSFlags.HasMD5:
             manifest_end += 16
 
         head.append_u32(manifest_end)
 
-        if self.file_version > 1:
+        if self.flags & IFSFlags.HasMD5:
             head.append_bytes(manifest_hash)
 
         ifs_file.write(head.data)
