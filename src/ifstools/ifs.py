@@ -78,7 +78,11 @@ class IFS:
             self.manifest_md5 = header.get_bytes(16)
 
         self.file.seek(header.offset)
-        self.manifest = KBinXML(self.file.read(manifest_end-header.offset))
+        manifest_raw = self.file.read(manifest_end-header.offset)
+        # older IFS files have 0-padding in a plaintext XML manifest
+        if not KBinXML.is_binary_xml(manifest_raw):
+            manifest_raw = manifest_raw.rstrip(b'\0')
+        self.manifest = KBinXML(manifest_raw)
         self.tree = GenericFolder(self.data_blob, self.manifest.xml_doc,
             super_disable=super_disable, super_skip_bad=super_skip_bad,
             super_abort_if_bad=super_abort_if_bad
