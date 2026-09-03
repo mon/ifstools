@@ -30,6 +30,9 @@ class GenericFolder(Node):
     file_handler = GenericFile
 
     def from_xml(self, element):
+        # controlled by IFSFlags.ManifestHasTimestamps, but recent AVS never
+        # checks that flag and just tries node/s32 (which get treated as
+        # folders) then 2s32/3s32 for files
         if element.text:
             self.time = int(element.text)
 
@@ -130,14 +133,18 @@ class GenericFolder(Node):
         for f in self.files.values():
             f.tree_complete()
 
-    def repack(self, manifest, data_blob, tqdm_progress, **kwargs):
+    def repack(self, manifest, data_blob, tqdm_progress, flags=None, **kwargs):
+        # muh circular deps
+        from ..ifs import IFSFlags
+
         if self.name:
             manifest = etree.SubElement(manifest, self.packed_name)
-            manifest.attrib['__type'] = 's32'
-            manifest.text = str(self.time)
+            if flags and flags & IFSFlags.ManifestHasTimestamps:
+                manifest.attrib['__type'] = 's32'
+                manifest.text = str(self.time)
 
         for name, entry in chain(self.folders.items(), self.files.items()):
-            entry.repack(manifest, data_blob, tqdm_progress, **kwargs)
+            entry.repack(manifest, data_blob, tqdm_progress, flags=flags, **kwargs)
 
     @property
     def all_files(self):

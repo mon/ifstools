@@ -21,11 +21,11 @@ from .handlers.tex_folder import ImageCanvas
 SIGNATURE = 0x6CAD8F89
 
 class IFSFlags(IntFlag):
-    UNK1 = 1
+    ManifestHasTimestamps = 1
     HasMD5 = 2
     UncompressedManifest = 4
 
-DEFAULT_FLAGS = IFSFlags.UNK1 | IFSFlags.HasMD5
+DEFAULT_FLAGS = IFSFlags.ManifestHasTimestamps | IFSFlags.HasMD5
 
 class FileBlob(object):
     ''' a basic wrapper around a file to deal with IFS data offset '''
@@ -213,28 +213,36 @@ class IFS:
                         extract_manifest=extract_manifest, path=rpath.replace('.ifs','_ifs'),
                         rename_dupes=rename_dupes, **kwargs)
 
-    def repack(self, progress = True, path = None, **kwargs):
+    def repack(self, progress = True, path = None, flags = None, **kwargs):
         if path is None:
             path = self.ifs_out
+        if flags is not None:
+            self.flags = flags
         # open first in case path is bad
         ifs_file = open(path, 'wb')
 
         self.data_blob = BytesIO()
 
         self.manifest = KBinXML(etree.Element('imgfs'))
-        manifest_info = etree.SubElement(self.manifest.xml_doc, '_info_')
+
+        # no md5 in the file also means no _info_ in the manifest for whatever reason
+        if self.flags & IFSFlags.HasMD5:
+            manifest_info = etree.SubElement(self.manifest.xml_doc, '_info_')
 
         # the important bit
         data = self._repack_tree(progress, **kwargs)
 
-        data_md5 = etree.SubElement(manifest_info, 'md5')
-        data_md5.attrib['__type'] = 'bin'
-        data_md5.attrib['__size'] = '16'
-        data_md5.text = hashlib.md5(data).hexdigest()
+        if self.flags & IFSFlags.HasMD5:
+            assert manifest_info is not None # type: ignore
 
-        data_size = etree.SubElement(manifest_info, 'size')
-        data_size.attrib['__type'] = 'u32'
-        data_size.text = str(len(data))
+            data_md5 = etree.SubElement(manifest_info, 'md5')
+            data_md5.attrib['__type'] = 'bin'
+            data_md5.attrib['__size'] = '16'
+            data_md5.text = hashlib.md5(data).hexdigest()
+
+            data_size = etree.SubElement(manifest_info, 'size')
+            data_size.attrib['__type'] = 'u32'
+            data_size.text = str(len(data))
 
         manifest_bin = self.manifest.to_binary(compressed=not (self.flags & IFSFlags.UncompressedManifest))
         manifest_hash = hashlib.md5(manifest_bin).digest()
@@ -286,6 +294,6 @@ class IFS:
         tqdm_progress = None
         if progress:
             tqdm_progress = tqdm(desc='Writing', total=len(files))
-        self.tree.repack(self.manifest.xml_doc, self.data_blob, tqdm_progress, **kwargs)
+        self.tree.repack(self.manifest.xml_doc, self.data_blob, tqdm_progress, flags=self.flags, **kwargs)
 
         return self.data_blob.getvalue()

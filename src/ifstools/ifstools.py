@@ -1,8 +1,20 @@
 import argparse
 import os
-from sys import exit # exe freeze
+from sys import exit  # exe freeze
+from typing import cast
 
-from .ifs import IFS
+from .ifs import DEFAULT_FLAGS, IFS, IFSFlags
+
+
+def parse_flags(value):
+    flags = IFSFlags(0)
+    for name in value.split(','):
+        try:
+            flags |= IFSFlags[name.strip()]
+        except KeyError:
+            raise argparse.ArgumentTypeError('invalid flag {!r} (choose from {})'.format(
+                name.strip(), ', '.join(IFSFlags.__members__)))
+    return flags
 
 def get_choice(prompt):
     while True:
@@ -41,6 +53,9 @@ def main():
                        help=argparse.SUPPRESS)
     parser.add_argument('--rename-dupes', action='store_true',
                        help='if two files have the same name but differing case (A.png vs a.png) rename the second as "a (1).png" to allow both to be extracted on Windows')
+    parser.add_argument('--flags', type=parse_flags, metavar='FLAG[,FLAG...]',
+                       help='flags to use when repacking. Almost never need to set this, but some old games don\'t support HasMD5. One or more of: {} Default: {}'.format(
+                           ','.join(IFSFlags.__members__), ','.join(cast(str, f.name) for f in DEFAULT_FLAGS)))
     parser.add_argument('-m', '--extract-manifest', action='store_true', help='extract the IFS manifest for inspection', dest='extract_manifest')
     parser.add_argument('--super-disable', action='store_true',
                        help='only extract files unique to this IFS, do not follow "super" parent references at all')

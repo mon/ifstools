@@ -83,7 +83,10 @@ class ImageFile(GenericFile):
         # Compress in parallel; the actual write loop in repack() runs serially.
         self._packed = self._build_packed()
 
-    def repack(self, manifest, data_blob, tqdm_progress, **kwargs):
+    def repack(self, manifest, data_blob, tqdm_progress, flags=None, **kwargs):
+        # muh circular deps
+        from ..ifs import IFSFlags
+
         if tqdm_progress:
             tqdm_progress.write(self.full_path)
             tqdm_progress.update(1)
@@ -92,10 +95,15 @@ class ImageFile(GenericFile):
         if data is None:
             data = self._build_packed()
 
-        # offset, size, timestamp
         elem = etree.SubElement(manifest, self.packed_name)
-        elem.attrib['__type'] = '3s32'
-        elem.text = '{} {} {}'.format(len(data_blob.getvalue()), len(data), self.time)
+        if flags and flags & IFSFlags.ManifestHasTimestamps:
+            # offset, size, timestamp
+            elem.attrib['__type'] = '3s32'
+            elem.text = '{} {} {}'.format(len(data_blob.getvalue()), len(data), self.time)
+        else:
+            # offset, size
+            elem.attrib['__type'] = '2s32'
+            elem.text = '{} {}'.format(len(data_blob.getvalue()), len(data))
         data_blob.write(data)
         # 16 byte alignment
         align = len(data) % 16

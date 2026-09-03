@@ -11,7 +11,9 @@ from .node import Node
 class GenericFile(Node):
     def from_xml(self, element):
         info = self._split_ints(element.text)
-        # sometimes we don't get a timestamp
+        # controlled by IFSFlags.ManifestHasTimestamps, but recent AVS never
+        # checks that flag and just tries node/s32 (which get treated as
+        # folders) then 2s32/3s32 for files
         if len(info) == 2:
             self.start, self.size = info
             self.time = -1
@@ -52,17 +54,28 @@ class GenericFile(Node):
         self.size = len(ret)
         return ret
 
-    def repack(self, manifest, data_blob, tqdm_progress, **kwargs):
+    def repack(self, manifest, data_blob, tqdm_progress, flags=None, **kwargs):
+        # muh circular deps
+        from ..ifs import IFSFlags
+
         if tqdm_progress:
             tqdm_progress.write(self.full_path)
             tqdm_progress.update(1)
         elem = etree.SubElement(manifest, self.packed_name)
-        elem.attrib['__type'] = '3s32'
+
         data = self.load(convert_kbin = False, **kwargs)
         if self.name.endswith('.xml') and not KBinXML.is_binary_xml(data):
             data = KBinXML(data).to_binary()
-        # offset, size, timestamp
-        elem.text = '{} {} {}'.format(len(data_blob.getvalue()), len(data), self.time)
+
+        if flags and flags & IFSFlags.ManifestHasTimestamps:
+            elem.attrib['__type'] = '3s32'
+            # offset, size, timestamp
+            elem.text = '{} {} {}'.format(len(data_blob.getvalue()), len(data), self.time)
+        else:
+            elem.attrib['__type'] = '2s32'
+            # offset, size
+            elem.text = '{} {}'.format(len(data_blob.getvalue()), len(data))
+
         data_blob.write(data)
         # 16 byte alignment
         align = len(data) % 16
