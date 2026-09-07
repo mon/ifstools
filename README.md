@@ -23,7 +23,8 @@ Have [uv](https://docs.astral.sh/uv/) installed? You can just `uvx ifstools`.
 ## Usage
 ```
 usage: ifstools [-h] [-e] [-y] [-o OUT_DIR] [--tex-only] [-c]
-                       [--bounds] [--uv] [--no-cache] [-m] [-s] [-r]
+                       [--bounds] [--uv] [--no-cache] [--flags FLAG[,FLAG...]]
+                       [-m] [-s] [-r]
                        file_to_unpack.ifs|folder_to_repack_ifs
                        [file_to_unpack.ifs|folder_to_repack_ifs ...]
 
@@ -51,6 +52,13 @@ optional arguments:
   --rename-dupes        if two files have the same name but differing case
                         (A.png vs a.png) rename the second as "a (1).png" to
                         allow both to be extracted on Windows
+  --flags FLAG[,FLAG...]
+                        flags to use when repacking. Almost never need to set
+                        this, but some old games don't support HasMD5.
+                        One or more of:
+                        ManifestHasTimestamps,HasMD5,UncompressedManifest
+                        Default:
+                        ManifestHasTimestamps,HasMD5
   -m, --extract-manifest
                         extract the IFS manifest for inspection
   --super-disable       only extract files unique to this IFS, do not follow
