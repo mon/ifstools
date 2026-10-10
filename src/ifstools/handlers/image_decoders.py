@@ -1,6 +1,6 @@
 from io import BytesIO
 
-from PIL import Image
+from PIL import Image, ImageChops
 from tqdm import tqdm
 
 try:
@@ -44,11 +44,11 @@ def decode_argb4444(ifs_img, data):
     return Image.merge('RGBA', (b, g, r, a))
 
 def encode_argb4444(ifs_img, image):
-    # there's no BGRA;4B
-    r, g, b, a = image.split()
-    image = Image.merge('RGBA', (b, g, r, a))
-
-    return image.tobytes('raw', 'RGBA;4B')
+    # PIL has no packer for RGBA;4B. Per pixel: byte0 = G<<4|B, byte1 = A<<4|R
+    r, g, b, a = image.convert('RGBA').split()
+    lo = ImageChops.add(g.point(lambda v: v & 0xF0), b.point(lambda v: v >> 4))
+    hi = ImageChops.add(a.point(lambda v: v & 0xF0), r.point(lambda v: v >> 4))
+    return Image.merge('LA', (lo, hi)).tobytes()
 
 def decode_dxt(ifs_img, data, version):
     rgba = _native.decode_dxt(data, ifs_img.img_size[0], ifs_img.img_size[1], version)
