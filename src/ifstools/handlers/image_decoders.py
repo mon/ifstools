@@ -60,14 +60,20 @@ def decode_dxt5(ifs_img, data):
 def decode_dxt1(ifs_img, data):
     return decode_dxt(ifs_img, data, 'dxt1')
 
+def encode_dxt(ifs_img, image, version):
+    return _native.encode_dxt(image.tobytes('raw', 'RGBA'), image.width, image.height, version)
+
 def encode_dxt5(ifs_img, image):
-    return _native.encode_dxt(image.tobytes('raw', 'RGBA'), image.width, image.height, 'dxt5')
+    return encode_dxt(ifs_img, image, 'dxt5')
+
+def encode_dxt1(ifs_img, image):
+    return encode_dxt(ifs_img, image, 'dxt1')
 
 
 image_formats = {
     'argb8888rev' : {'decoder': decode_argb8888rev, 'encoder': encode_argb8888rev},
     'argb4444'    : {'decoder': decode_argb4444, 'encoder': encode_argb4444},
-    'dxt1'        : {'decoder': decode_dxt1, 'encoder': None},
+    'dxt1'        : {'decoder': decode_dxt1, 'encoder': encode_dxt1 if _native else None},
     'dxt5'        : {'decoder': decode_dxt5, 'encoder': encode_dxt5 if _native else None},
 }
 
