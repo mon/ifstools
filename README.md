@@ -79,9 +79,6 @@ uv pip install . pyinstaller==6.19.0
 uv run pyinstaller --onefile --name ifstools ifstools_bin.py
 ```
 
-Notes:
-- argb8888rev and dxt5 can be repacked. Other formats will silently be converted to argb8888rev
-
 Todo:
 - Recursive repacking for ifs inside ifs
 
