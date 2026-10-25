@@ -2,6 +2,7 @@ __pycache__/
 *.ifs
 *_ifs
 *.pyc
+*.pyd
 build/
 dist/
 ifstools.egg-info/
@@ -11,3 +12,4 @@ ifstools.spec
 target/
 *.so
 *.dll
+.vscode/
