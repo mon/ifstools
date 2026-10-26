@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "ifstools"
-version = "3.1"
+version = "3.2"
 description = "Extractor/repacker for Konmai IFS files"
 readme = "README.md"
 authors = [
