@@ -14,16 +14,16 @@ class MD5Folder(GenericFolder):
         self.md5_tag = md5_tag if md5_tag else self.name
         self.extension = extension
 
-    def tree_complete(self):
+    def tree_complete(self, xml_name: str | None = None):
         GenericFolder.tree_complete(self)
 
         self.info_kbin = None
         self.info_file = None
         for filename, file in self.files.items():
-            if filename.endswith('.xml'):
+            if (filename == xml_name if xml_name else filename.endswith('.xml')):
                 self.info_file = file
                 break
-        if not self.info_file:
+        else:
             #raise KeyError('MD5 folder contents have no mapping xml')
             # _super_ references to info XML breaks things - just extract what we can
             return

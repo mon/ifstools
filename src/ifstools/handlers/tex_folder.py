@@ -62,13 +62,15 @@ class ImageCanvas(GenericFile):
             tqdm_progress.update(1)
 
 class TexFolder(MD5Folder):
+    IMAGE_TAG = 'image'
+
     def __init__(self, ifs_data, obj, parent = None, path = '', name = '', supers = None,
             super_disable = False, super_skip_bad = False, super_abort_if_bad = False):
         MD5Folder.__init__(self, ifs_data, obj, parent, path, name, supers,
-            super_disable, super_skip_bad, super_abort_if_bad, 'image', '.png')
+            super_disable, super_skip_bad, super_abort_if_bad, self.IMAGE_TAG, '.png')
 
     def tree_complete(self):
-        MD5Folder.tree_complete(self)
+        MD5Folder.tree_complete(self, 'texturelist.xml')
 
         if '_cache' in self.folders:
             self.folders.pop('_cache')
@@ -90,11 +92,13 @@ class TexFolder(MD5Folder):
             for indiv in tex.iterchildren():
                 if indiv.tag == 'size':
                     canvas_size = self._split_ints(indiv.text)
-                elif indiv.tag == 'image':
+                elif indiv.tag == self.IMAGE_TAG:
                     name = indiv.attrib['name'] + '.png'
                     if name in self.files:
                         ImageFile.upgrade_generic(self.files[name], indiv, fmt, self.compress)
                         canvas_contents.append(self.files[name])
+                elif indiv.tag == 'font':
+                    pass
                 else:
                     tqdm.write('Unknown texturelist.xml element {}'.format(indiv.tag))
             canvas = ImageCanvas(folder, canvas_size, canvas_contents, self)

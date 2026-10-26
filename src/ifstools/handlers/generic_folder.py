@@ -16,10 +16,12 @@ class GenericFolder(Node):
             super_abort_if_bad = False):
         # circular dependencies mean we import here
         from .afp_folder import AfpFolder
+        from .font_folder import FontFolder
         from .tex_folder import TexFolder
         self.folder_handlers = {
             'afp' : AfpFolder,
             'tex' : TexFolder,
+            'font': FontFolder,
         }
         self.supers = supers if supers else []
         self.super_disable = super_disable

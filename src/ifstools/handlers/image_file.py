@@ -22,8 +22,11 @@ class ImageFile(GenericFile):
         self.compress = compress
 
         # all values are multiplied by 2, odd values have never been seen
-        self.uvrect =  [x//2 for x in self._split_ints(image_elem.find('uvrect').text)]
         self.imgrect = [x//2 for x in self._split_ints(image_elem.find('imgrect').text)]
+        if (uvrect_el := image_elem.find('uvrect')) is not None:
+            self.uvrect =  [x//2 for x in self._split_ints(uvrect_el.text)]
+        else: # have only seen this in the medal game font lists
+            self.uvrect = self.imgrect
         self.img_size = (
             self.imgrect[1]-self.imgrect[0],
             self.imgrect[3]-self.imgrect[2]
