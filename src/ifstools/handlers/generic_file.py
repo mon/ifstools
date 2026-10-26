@@ -2,7 +2,7 @@ import os
 
 import lxml.etree as etree
 from kbinxml import KBinXML
-from kbinxml.kbinxml import KBinException
+from kbinxml.kbinxml import BIN_ENCODING
 
 from .. import utils
 from .node import Node
@@ -37,15 +37,14 @@ class GenericFile(Node):
             return self._load_from_filesystem(**kwargs)
 
     def _load_from_ifs(self, convert_kbin = True, **kwargs):
+        # muh circular deps
+        from .md5_folder import MD5Folder
+
         data = self.ifs_data.get(self.start, self.size)
 
         if convert_kbin and self.name.endswith('.xml') and KBinXML.is_binary_xml(data):
-            try:
-                data = KBinXML(data).to_text().encode('utf8')
-            except KBinException as e:
-                if 'convert_illegal_things' in e.args[0]:
-                    print("Corrupt xml found, trying to decode as utf8")
-                    data = KBinXML(data, convert_illegal_things=True).to_text().encode('utf8')
+            kbin = utils.tex_xml_unmojibake(data, force_utf=isinstance(self.parent, MD5Folder))
+            data = kbin.to_text().encode('utf8')
         return data
 
     def _load_from_filesystem(self, **kwargs):
@@ -57,6 +56,7 @@ class GenericFile(Node):
     def repack(self, manifest, data_blob, tqdm_progress, flags=None, **kwargs):
         # muh circular deps
         from ..ifs import IFSFlags
+        from .md5_folder import MD5Folder
 
         if tqdm_progress:
             tqdm_progress.write(self.full_path)
@@ -65,7 +65,8 @@ class GenericFile(Node):
 
         data = self.load(convert_kbin = False, **kwargs)
         if self.name.endswith('.xml') and not KBinXML.is_binary_xml(data):
-            data = KBinXML(data).to_binary()
+            encoding = 'UTF-8' if isinstance(self.parent, MD5Folder) else BIN_ENCODING
+            data = KBinXML(data).to_binary(encoding=encoding)
 
         if flags and flags & IFSFlags.ManifestHasTimestamps:
             elem.attrib['__type'] = '3s32'

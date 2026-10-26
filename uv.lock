@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.10"
 
 [[package]]
@@ -24,7 +24,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "kbinxml", specifier = ">=1.5" },
+    { name = "kbinxml", specifier = ">=2.2" },
     { name = "lxml" },
     { name = "pillow" },
     { name = "tqdm" },
@@ -32,12 +32,15 @@ requires-dist = [
 
 [[package]]
 name = "kbinxml"
-version = "2.1"
+version = "2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "lxml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/40/1b/d13df23c922746c39414965ac0b04be9de7bff6431eadd779ac0fa1b1ff3/kbinxml-2.1.tar.gz", hash = "sha256:fa52b9001086993533d5b890bac929959744216c689743c8fae65368a1aa37cb", size = 10005, upload-time = "2024-04-28T01:01:15.067Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6b/d6/1790038408bbf9711dbac9eaf82479d769f8036f42d630c0dc15df4909e8/kbinxml-2.2.tar.gz", hash = "sha256:c2d8d6ba63e95a91c0d030b3031dddd7f6ecc14c60f7b6321cf2a25baab62205", size = 10335, upload-time = "2026-10-26T02:10:32.592Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e6/57/b762fff2571df50060541559c57249499cef8ff7bb53c86d31571f601008/kbinxml-2.2-py3-none-any.whl", hash = "sha256:d3123a94fd8e002f211fb4d77f9a34efb71264c3f99692e7b56e5d0567dd32e9", size = 11230, upload-time = "2026-10-26T02:10:31.595Z" },
+]
 
 [[package]]
 name = "lxml"

@@ -11,7 +11,7 @@ authors = [
     {name = "mon", email = "me@mon.im"},
 ]
 dependencies = [
-    "kbinxml>=1.5",
+    "kbinxml>=2.2",
     "lxml",
     "pillow",
     "tqdm",
@@ -28,3 +28,7 @@ ifstools = "ifstools:main"
 python-source = "src"
 module-name = "ifstools.handlers._native"
 features = ["pyo3/extension-module"]
+
+[tool.uv.sources]
+# debug/experiments
+# kbinxml = { path = "../kbinxml", editable = true }

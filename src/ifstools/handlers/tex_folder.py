@@ -19,7 +19,7 @@ class TextureList(GenericFile):
             if tex.attrib['format'] not in cachable_formats:
                 tex.attrib['format'] = 'argb8888rev'
 
-        return k.to_binary()
+        return k.to_binary(encoding='UTF-8')
 
 class ImageCanvas(GenericFile):
     def __init__(self, name, size, images, parent):
